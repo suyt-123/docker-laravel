@@ -1,0 +1,75 @@
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Composer / PHP
+/vendor/
+/auth.json
+.phpactor.json
+.phpunit.result.cache
+/.phpunit.cache/
+
+# Node / frontend build output
+/node_modules/
+/public/build/
+/public/hot
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Laravel runtime files
+/bootstrap/cache/*.php
+/storage/*.key
+/storage/app/*
+!/storage/app/.gitignore
+!/storage/app/public/
+!/storage/app/public/.gitignore
+!/storage/app/private/
+!/storage/app/private/.gitignore
+/storage/debugbar/
+/storage/framework/cache/*
+!/storage/framework/cache/.gitignore
+!/storage/framework/cache/data/
+!/storage/framework/cache/data/.gitignore
+/storage/framework/sessions/*
+!/storage/framework/sessions/.gitignore
+/storage/framework/testing/*
+!/storage/framework/testing/.gitignore
+/storage/framework/views/*
+!/storage/framework/views/.gitignore
+/storage/logs/*
+!/storage/logs/.gitignore
+/storage/pail/
+
+# Public/generated uploads
+/public/storage
+
+# Local databases and test artifacts
+*.sqlite
+*.sqlite3
+/database/*.sqlite
+/database/*.sqlite3
+/coverage/
+/.nyc_output/
+
+# Docker / local overrides
+docker-compose.override.yml
+
+# IDEs and editors
+/.fleet/
+/.idea/
+/.nova/
+/.vscode/
+/.zed/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Laravel local VM files
+Homestead.json
+Homestead.yaml
