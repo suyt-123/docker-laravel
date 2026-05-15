@@ -1,0 +1,45 @@
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+
+class Role extends Model
+{
+    use HasFactory;
+
+    protected $fillable = [
+        'tenant_id',
+        'name',
+        'code',
+        'description',
+        'is_system',
+        'is_protected',
+    ];
+
+    protected function casts(): array
+    {
+        return [
+            'is_system' => 'boolean',
+            'is_protected' => 'boolean',
+        ];
+    }
+
+    public function tenant(): BelongsTo
+    {
+        return $this->belongsTo(Tenant::class);
+    }
+
+    public function capabilities(): BelongsToMany
+    {
+        return $this->belongsToMany(Capability::class)->withTimestamps();
+    }
+
+    public function users(): BelongsToMany
+    {
+        return $this->belongsToMany(User::class)->withPivot('tenant_id')->withTimestamps();
+    }
+}

@@ -2,6 +2,8 @@
 
 namespace App\Http\Middleware;
 
+use App\Auth\CapabilityAuthorizer;
+use App\Services\SettingService;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -29,10 +31,31 @@ class HandleInertiaRequests extends Middleware
      */
     public function share(Request $request): array
     {
+        $user = $request->user();
+        $settings = app(SettingService::class)->nested();
+
         return [
             ...parent::share($request),
             'auth' => [
-                'user' => $request->user(),
+                'user' => $user,
+                'capabilities' => fn () => $user
+                    ? app(CapabilityAuthorizer::class)->capabilityCodes($user)->all()
+                    : [],
+            ],
+            'flash' => [
+                'success' => fn () => $request->session()->get('success'),
+            ],
+            'features' => [
+                'progressPhotos' => (bool) config('features.progress_photos'),
+            ],
+            'settings' => [
+                ...$settings,
+                'attendance' => [
+                    ...($settings['attendance'] ?? []),
+                    'requirePhoto' => (bool) ($settings['attendance']['require_photo'] ?? false),
+                    'allowedDistanceMeters' => (int) ($settings['attendance']['allowed_distance_meters'] ?? 250),
+                    'allowManualCorrection' => (bool) ($settings['attendance']['allow_manual_correction'] ?? false),
+                ],
             ],
         ];
     }

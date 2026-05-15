@@ -1,0 +1,24 @@
+import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import { Head } from '@inertiajs/react';
+import SupplierForm from './Partials/SupplierForm';
+
+export default function Create() {
+    return (
+        <AuthenticatedLayout
+            header={
+                <h2 className="text-xl font-semibold leading-tight text-gray-800">
+                    新增供應商
+                </h2>
+            }
+        >
+            <Head title="新增供應商" />
+            <div className="py-8">
+                <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
+                    <div className="bg-white p-6 shadow-sm sm:rounded-lg">
+                        <SupplierForm submitLabel="建立供應商" />
+                    </div>
+                </div>
+            </div>
+        </AuthenticatedLayout>
+    );
+}

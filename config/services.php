@@ -35,4 +35,9 @@ return [
         ],
     ],
 
+    'browsershot' => [
+        'chrome_path' => env('BROWSERSHOT_CHROME_PATH', env('PUPPETEER_EXECUTABLE_PATH', '/usr/bin/chromium')),
+        'node_binary' => env('BROWSERSHOT_NODE_BINARY', '/usr/bin/node'),
+    ],
+
 ];

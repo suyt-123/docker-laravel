@@ -16,7 +16,9 @@ return Application::configure(basePath: dirname(__DIR__))
             \Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets::class,
         ]);
 
-        //
+        $middleware->alias([
+            'capability' => \App\Http\Middleware\EnsureUserHasCapability::class,
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //

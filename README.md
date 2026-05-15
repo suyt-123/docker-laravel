@@ -12,8 +12,17 @@ Laravel 12 + React/Inertia + PostgreSQL Docker development environment for the s
 | Redis | localhost:6379 | Cache, queue, sessions, future broadcasts |
 | MinIO | http://localhost:9001 | S3-compatible local storage console |
 | Mailpit | http://localhost:8025 | Local email inbox |
+| Adminer | http://localhost:8081 | Web database table viewer/editor |
 
 Default MinIO credentials are `minioadmin` / `minioadmin`.
+
+Default Adminer login:
+
+- System: `PostgreSQL`
+- Server: `postgres`
+- Username: `tinhouse`
+- Password: `secret`
+- Database: `tinhouse`
 
 ## First Run
 
@@ -23,8 +32,14 @@ docker compose up -d --build
 docker compose exec app composer install
 docker compose exec app php artisan key:generate
 docker compose exec app php artisan migrate
+docker compose exec app php artisan db:seed
 docker compose run --rm node npm install
 ```
+
+Default development login:
+
+- Email: `admin@example.com`
+- Password: `password`
 
 Run Vite when working on React/Inertia screens:
 
@@ -60,9 +75,42 @@ Browsershot uses Chromium installed in the PHP image. After the app container is
 docker compose exec app php -r "require 'vendor/autoload.php'; Spatie\\Browsershot\\Browsershot::html('<h1>Tinhouse PDF</h1>')->setChromePath('/usr/bin/chromium')->noSandbox()->save('/tmp/tinhouse-smoke.pdf'); echo file_exists('/tmp/tinhouse-smoke.pdf') ? 'PDF OK'.PHP_EOL : 'PDF failed'.PHP_EOL;"
 ```
 
+PDF output can be tuned for smaller servers:
+
+```env
+# chromium: generate a real PDF with Browsershot/Chromium
+# html: return a printable HTML page, so the browser can print/save without server-side Chromium
+DOCUMENT_PDF_RENDERER=chromium
+
+# inline: open generated PDFs in the browser
+# attachment: download generated PDFs
+DOCUMENT_PDF_DISPOSITION=inline
+```
+
+Progress logs can stay enabled while photo uploads are disabled for smaller servers:
+
+```env
+FEATURE_PROGRESS_PHOTOS=false
+```
+
+## MVP Schema
+
+The first domain schema is in place for the money-and-operations path:
+
+- `customers`, `customer_contacts`
+- `projects`
+- `quotations`, `quotation_items`
+- `material_categories`, `materials`
+- `inventory_transactions`
+- `work_crews`, `workers`
+- `dispatches`, `dispatch_worker`
+- `financial_records`
+
+This covers the first MVP flow: customer -> project -> quotation -> materials/inventory -> dispatch -> payment tracking.
+
 ## Project Structure
 
-The initial codebase is intentionally an application baseline, not the full ERP schema. It includes Laravel Breeze/Inertia authentication and placeholder directories for the planned modules:
+The codebase includes Laravel Breeze/Inertia authentication, the MVP domain models, and placeholder directories for the planned service/action layers:
 
 - `app/Actions`
 - `app/Services`
@@ -72,4 +120,4 @@ The initial codebase is intentionally an application baseline, not the full ERP 
 - `resources/js/Hooks`
 - `resources/js/lib`
 
-Next implementation step: create the MVP domain migrations and models for customers, projects, quotations, materials, dispatches, progress photos, and payments.
+Next implementation step: build the Inertia CRUD screens for customers and projects, then connect quotations and materials.
