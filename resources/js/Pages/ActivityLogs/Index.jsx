@@ -43,7 +43,7 @@ export default function Index({ activityLogs, filters, options }) {
 
                     <form
                         onSubmit={submit}
-                        className="grid gap-3 bg-white p-4 shadow-sm sm:rounded-lg xl:grid-cols-[1fr_180px_150px_220px_170px_auto]"
+                        className="flex flex-col gap-3 bg-white p-4 shadow-sm sm:rounded-lg lg:flex-row lg:flex-wrap lg:items-center"
                     >
                         <TextInput
                             value={data.search}

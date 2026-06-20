@@ -33,7 +33,7 @@ export default function WorkHours({ filters, summary, workers, crews }) {
                 <div className="mx-auto max-w-7xl space-y-5 px-4 sm:px-6 lg:px-8">
                     <form
                         onSubmit={submit}
-                        className="flex flex-col gap-3 bg-white p-4 shadow-sm sm:rounded-lg lg:flex-row lg:items-center"
+                        className="flex flex-col gap-3 bg-white p-4 shadow-sm sm:rounded-lg lg:flex-row lg:flex-wrap lg:items-center"
                     >
                         <select
                             className="rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"

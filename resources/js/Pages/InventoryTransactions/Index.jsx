@@ -36,7 +36,7 @@ export default function Index({ transactions, filters, types }) {
     return (
         <AuthenticatedLayout
             header={
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
                     <h2 className="text-xl font-semibold leading-tight text-gray-800">
                         庫存異動
                     </h2>
@@ -60,7 +60,7 @@ export default function Index({ transactions, filters, types }) {
 
                     <form
                         onSubmit={submit}
-                        className="flex flex-col gap-3 bg-white p-4 shadow-sm sm:rounded-lg lg:flex-row lg:items-center"
+                        className="flex flex-col gap-3 bg-white p-4 shadow-sm sm:rounded-lg lg:flex-row lg:flex-wrap lg:items-center"
                     >
                         <TextInput
                             className="w-full lg:max-w-sm"

@@ -117,6 +117,8 @@ class ProjectController extends Controller
 
     public function show(Request $request, Project $project): Response
     {
+        $this->ensureVisible($request, $project);
+
         $canViewFinancials = $this->canViewFinancials($request);
         $canViewQuotations = $this->authorizer->allows($request->user(), 'sales.quotations.view.tenant');
         $canViewChangeOrders = $this->authorizer->allows($request->user(), 'projects.change_orders.view.tenant');
@@ -224,6 +226,8 @@ class ProjectController extends Controller
 
     public function invoicePdf(Request $request, Project $project): SymfonyResponse
     {
+        $this->ensureVisible($request, $project);
+
         $data = $request->validate([
             'financial_record_ids' => ['required', 'array', 'min:1'],
             'financial_record_ids.*' => ['integer', 'distinct'],
@@ -338,6 +342,8 @@ class ProjectController extends Controller
 
     public function edit(Request $request, Project $project): Response
     {
+        $this->ensureVisible($request, $project);
+
         $canViewFinancials = $this->canViewFinancials($request);
 
         return Inertia::render('Projects/Edit', [
@@ -364,6 +370,8 @@ class ProjectController extends Controller
 
     public function update(UpdateProjectRequest $request, Project $project): RedirectResponse
     {
+        $this->ensureVisible($request, $project);
+
         $data = $request->validated();
         $data['project_no'] = $project->project_no;
         if (! $this->canViewFinancials($request)) {
@@ -380,8 +388,10 @@ class ProjectController extends Controller
             ->with('success', '工程案件已更新。');
     }
 
-    public function destroy(Project $project): RedirectResponse
+    public function destroy(Request $request, Project $project): RedirectResponse
     {
+        $this->ensureVisible($request, $project);
+
         $photoPaths = $project->progressPhotos()
             ->pluck('file_path')
             ->filter()
@@ -401,6 +411,16 @@ class ProjectController extends Controller
         return redirect()
             ->route('projects.index')
             ->with('success', '工程案件已刪除。');
+    }
+
+    private function ensureVisible(Request $request, Project $project): void
+    {
+        $visible = $this->dataScope
+            ->projects(Project::query(), $request->user())
+            ->whereKey($project->id)
+            ->exists();
+
+        abort_unless($visible, 403);
     }
 
     /**

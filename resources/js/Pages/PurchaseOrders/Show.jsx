@@ -23,7 +23,7 @@ export default function Show({ order, statuses }) {
     return (
         <AuthenticatedLayout
             header={
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
                     <div>
                         <h2 className="text-xl font-semibold leading-tight text-gray-800">
                             {order.purchase_order_no}
@@ -187,7 +187,7 @@ function ReceiveForm({ order }) {
             onSubmit={submit}
             className="space-y-5 bg-white p-6 shadow-sm sm:rounded-lg"
         >
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
                 <h3 className="text-base font-semibold text-gray-950">
                     到貨驗收
                 </h3>

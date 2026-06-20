@@ -35,7 +35,7 @@ export default function Index({ records, filters, types, statuses }) {
     return (
         <AuthenticatedLayout
             header={
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
                     <h2 className="text-xl font-semibold leading-tight text-gray-800">
                         財務收款
                     </h2>
@@ -56,7 +56,7 @@ export default function Index({ records, filters, types, statuses }) {
                         </div>
                     )}
 
-                    <form onSubmit={submit} className="flex flex-col gap-3 bg-white p-4 shadow-sm sm:rounded-lg lg:flex-row lg:items-center">
+                    <form onSubmit={submit} className="flex flex-col gap-3 bg-white p-4 shadow-sm sm:rounded-lg lg:flex-row lg:flex-wrap lg:items-center">
                         <TextInput className="w-full lg:max-w-sm" value={data.search} onChange={(event) => setData('search', event.target.value)} placeholder="搜尋款項、案件、客戶" />
                         <select className="rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500" value={data.type} onChange={(event) => setData('type', event.target.value)}>
                             <option value="">全部類型</option>

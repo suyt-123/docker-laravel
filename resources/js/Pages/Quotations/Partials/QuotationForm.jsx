@@ -261,7 +261,7 @@ export default function QuotationForm({
 
             {!quotation?.id && options.quotationTemplates?.length > 0 && (
                 <section className="space-y-5 rounded-md border border-gray-200 bg-gray-50 p-4">
-                    <div className="flex flex-col gap-3 lg:flex-row lg:items-end">
+                    <div className="flex flex-col gap-3 lg:flex-row lg:flex-wrap lg:items-end">
                         <div className="lg:w-80">
                             <InputLabel
                                 htmlFor="quotation_template"

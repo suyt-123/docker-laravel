@@ -17,12 +17,12 @@ export default function Index({ workers, filters }) {
     const destroyWorker = (worker) => { if (window.confirm(`確定要刪除「${worker.name}」嗎？`)) router.delete(route('workers.destroy', worker.id)); };
 
     return (
-        <AuthenticatedLayout header={<div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><h2 className="text-xl font-semibold leading-tight text-gray-800">師傅管理</h2>{canCreate && <Link href={route('workers.create')}><PrimaryButton>新增師傅</PrimaryButton></Link>}</div>}>
+        <AuthenticatedLayout header={<div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between"><h2 className="text-xl font-semibold leading-tight text-gray-800">師傅管理</h2>{canCreate && <Link href={route('workers.create')}><PrimaryButton>新增師傅</PrimaryButton></Link>}</div>}>
             <Head title="師傅管理" />
             <div className="py-8">
                 <div className="mx-auto max-w-7xl space-y-5 px-4 sm:px-6 lg:px-8">
                     {flash.success && <div className="rounded-md border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">{flash.success}</div>}
-                    <form onSubmit={submit} className="flex flex-col gap-3 bg-white p-4 shadow-sm sm:rounded-lg lg:flex-row lg:items-center">
+                    <form onSubmit={submit} className="flex flex-col gap-3 bg-white p-4 shadow-sm sm:rounded-lg lg:flex-row lg:flex-wrap lg:items-center">
                         <TextInput className="w-full lg:max-w-sm" value={data.search} onChange={(event) => setData('search', event.target.value)} placeholder="搜尋師傅、工班、電話、職務" />
                         <select className="rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500" value={data.active} onChange={(event) => setData('active', event.target.value)}>
                             <option value="">全部狀態</option><option value="1">啟用</option><option value="0">停用</option>

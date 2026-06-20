@@ -39,7 +39,7 @@ class SettingService
             'company.name' => [
                 'label' => '公司名稱',
                 'type' => 'string',
-                'default' => (string) config('settings.company.name', '鐵皮屋工程管理系統'),
+                'default' => (string) config('settings.company.name', '工程管理系統'),
                 'group' => '公司資料',
             ],
             'company.phone' => [

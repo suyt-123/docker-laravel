@@ -28,7 +28,7 @@ export default function Index({ workCrews, filters }) {
     return (
         <AuthenticatedLayout
             header={
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
                     <h2 className="text-xl font-semibold leading-tight text-gray-800">工班管理</h2>
                     {canCreate && <Link href={route('work-crews.create')}><PrimaryButton>新增工班</PrimaryButton></Link>}
                 </div>
@@ -39,7 +39,7 @@ export default function Index({ workCrews, filters }) {
                 <div className="mx-auto max-w-7xl space-y-5 px-4 sm:px-6 lg:px-8">
                     {flash.success && <div className="rounded-md border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">{flash.success}</div>}
 
-                    <form onSubmit={submit} className="flex flex-col gap-3 bg-white p-4 shadow-sm sm:rounded-lg sm:flex-row sm:items-center">
+                    <form onSubmit={submit} className="flex flex-col gap-3 bg-white p-4 shadow-sm sm:rounded-lg sm:flex-row sm:flex-wrap sm:items-center">
                         <TextInput className="w-full sm:max-w-sm" value={data.search} onChange={(event) => setData('search', event.target.value)} placeholder="搜尋工班、負責人、電話" />
                         <PrimaryButton disabled={processing}>搜尋</PrimaryButton>
                         <Link href={route('work-crews.index')}><SecondaryButton type="button">清除</SecondaryButton></Link>

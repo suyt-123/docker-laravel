@@ -37,7 +37,7 @@ export default function Index({ customers, filters }) {
     return (
         <AuthenticatedLayout
             header={
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
                     <h2 className="text-xl font-semibold leading-tight text-gray-800">
                         客戶管理
                     </h2>
@@ -61,7 +61,7 @@ export default function Index({ customers, filters }) {
 
                     <form
                         onSubmit={search}
-                        className="flex flex-col gap-3 bg-white p-4 shadow-sm sm:flex-row sm:items-center sm:rounded-lg"
+                        className="flex flex-col gap-3 bg-white p-4 shadow-sm sm:flex-row sm:flex-wrap sm:items-center sm:rounded-lg"
                     >
                         <TextInput
                             className="w-full sm:max-w-sm"

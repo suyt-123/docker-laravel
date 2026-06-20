@@ -336,7 +336,7 @@ export default function AuthenticatedLayout({ header, children }) {
                                 <Brand compact />
                             </div>
                             <div className="hidden text-sm text-slate-500 sm:block">
-                                鐵皮屋工程管理系統
+                                工程管理系統
                             </div>
                         </div>
 

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Auth\DataScope;
 use App\Http\Requests\StoreInventoryTransactionRequest;
 use App\Http\Requests\UpdateInventoryTransactionRequest;
 use App\Models\InventoryTransaction;
@@ -15,6 +16,10 @@ use Inertia\Response;
 
 class InventoryTransactionController extends Controller
 {
+    public function __construct(private readonly DataScope $dataScope)
+    {
+    }
+
     public function index(Request $request): Response
     {
         $search = trim((string) $request->query('search', ''));
@@ -87,8 +92,10 @@ class InventoryTransactionController extends Controller
             ->with('success', '庫存異動已建立。');
     }
 
-    public function show(InventoryTransaction $inventoryTransaction): Response
+    public function show(Request $request, InventoryTransaction $inventoryTransaction): Response
     {
+        $this->ensureVisible($request, $inventoryTransaction);
+
         $inventoryTransaction->load(['material:id,name,spec,unit,current_stock', 'project:id,project_no,name', 'creator:id,name']);
 
         return Inertia::render('InventoryTransactions/Show', [
@@ -110,8 +117,10 @@ class InventoryTransactionController extends Controller
         ]);
     }
 
-    public function edit(InventoryTransaction $inventoryTransaction): Response
+    public function edit(Request $request, InventoryTransaction $inventoryTransaction): Response
     {
+        $this->ensureVisible($request, $inventoryTransaction);
+
         return Inertia::render('InventoryTransactions/Edit', [
             'transaction' => [
                 'id' => $inventoryTransaction->id,
@@ -132,6 +141,8 @@ class InventoryTransactionController extends Controller
 
     public function update(UpdateInventoryTransactionRequest $request, InventoryTransaction $inventoryTransaction): RedirectResponse
     {
+        $this->ensureVisible($request, $inventoryTransaction);
+
         DB::transaction(function () use ($request, $inventoryTransaction) {
             $this->revertStockDelta($inventoryTransaction);
             $inventoryTransaction->update($this->transactionData($request->validated()));
@@ -143,8 +154,10 @@ class InventoryTransactionController extends Controller
             ->with('success', '庫存異動已更新。');
     }
 
-    public function destroy(InventoryTransaction $inventoryTransaction): RedirectResponse
+    public function destroy(Request $request, InventoryTransaction $inventoryTransaction): RedirectResponse
     {
+        $this->ensureVisible($request, $inventoryTransaction);
+
         DB::transaction(function () use ($inventoryTransaction) {
             $this->revertStockDelta($inventoryTransaction);
             $inventoryTransaction->delete();
@@ -217,6 +230,20 @@ class InventoryTransactionController extends Controller
             'current_stock',
             $this->stockDelta($transaction),
         );
+    }
+
+    private function ensureVisible(Request $request, InventoryTransaction $inventoryTransaction): void
+    {
+        if (! $inventoryTransaction->project_id) {
+            return;
+        }
+
+        $visible = $this->dataScope
+            ->projects(Project::query(), $request->user())
+            ->whereKey($inventoryTransaction->project_id)
+            ->exists();
+
+        abort_unless($visible, 403);
     }
 
     private function stockDelta(InventoryTransaction $transaction): float

@@ -42,7 +42,7 @@ export default function Show({ project, statuses }) {
     return (
         <AuthenticatedLayout
             header={
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
                     <div>
                         <h2 className="text-xl font-semibold leading-tight text-gray-800">
                             {project.name}
@@ -436,7 +436,7 @@ function FinancialRecordsList({
 
     return (
         <section className="bg-white p-6 shadow-sm sm:rounded-lg">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
                 <div>
                     <h3 className="text-base font-semibold text-gray-950">
                         收款紀錄

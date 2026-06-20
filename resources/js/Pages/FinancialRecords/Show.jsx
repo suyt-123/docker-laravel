@@ -17,7 +17,7 @@ export default function Show({ record, types, statuses }) {
     return (
         <AuthenticatedLayout
             header={
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
                     <h2 className="text-xl font-semibold leading-tight text-gray-800">{record.title}</h2>
                     <div className="flex gap-2">
                         <Link href={route('financial-records.index')}><SecondaryButton type="button">返回列表</SecondaryButton></Link>

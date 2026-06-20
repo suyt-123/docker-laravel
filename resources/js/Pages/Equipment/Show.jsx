@@ -22,7 +22,7 @@ export default function Show({
     return (
         <AuthenticatedLayout
             header={
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
                     <div>
                         <h2 className="text-xl font-semibold leading-tight text-gray-800">
                             {equipment.equipment_no} · {equipment.name}
@@ -142,7 +142,7 @@ export default function Show({
                     )}
 
                     <section className="overflow-hidden bg-white shadow-sm sm:rounded-lg">
-                        <div className="flex flex-col gap-3 border-b border-gray-200 p-6 sm:flex-row sm:items-center sm:justify-between">
+                        <div className="flex flex-col gap-3 border-b border-gray-200 p-6 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
                             <h3 className="text-base font-semibold text-gray-950">
                                 最近交易紀錄
                             </h3>

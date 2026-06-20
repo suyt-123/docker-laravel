@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Auth\CapabilityAuthorizer;
 use App\Http\Requests\StoreUserRequest;
 use App\Http\Requests\UpdateUserRequest;
 use App\Models\Role;
@@ -14,6 +15,10 @@ use Inertia\Response;
 
 class UserController extends Controller
 {
+    public function __construct(private readonly CapabilityAuthorizer $authorizer)
+    {
+    }
+
     public function index(Request $request): Response
     {
         $search = trim((string) $request->query('search', ''));
@@ -47,6 +52,9 @@ class UserController extends Controller
     public function store(StoreUserRequest $request): RedirectResponse
     {
         $data = $request->validated();
+        $roleIds = $data['roles'] ?? [];
+
+        $this->ensureCanSyncRoles($request, $roleIds);
 
         $user = User::create([
             'name' => $data['name'],
@@ -55,7 +63,7 @@ class UserController extends Controller
             'email_verified_at' => ($data['email_verified'] ?? false) ? now() : null,
         ]);
 
-        $user->roles()->sync($data['roles'] ?? []);
+        $user->roles()->sync($roleIds);
 
         return redirect()
             ->route('users.show', $user)
@@ -103,6 +111,9 @@ class UserController extends Controller
     public function update(UpdateUserRequest $request, User $user): RedirectResponse
     {
         $data = $request->validated();
+        $roleIds = $data['roles'] ?? [];
+
+        $this->ensureCanSyncRoles($request, $roleIds, $user);
 
         $payload = [
             'name' => $data['name'],
@@ -115,7 +126,7 @@ class UserController extends Controller
         }
 
         $user->update($payload);
-        $user->roles()->sync($data['roles'] ?? []);
+        $user->roles()->sync($roleIds);
 
         return redirect()
             ->route('users.show', $user)
@@ -142,6 +153,30 @@ class UserController extends Controller
         return Role::query()
             ->orderBy('name')
             ->get(['id', 'name', 'code', 'description']);
+    }
+
+    /**
+     * @param  array<int, mixed>  $roleIds
+     */
+    private function ensureCanSyncRoles(Request $request, array $roleIds, ?User $user = null): void
+    {
+        $requestedRoleIds = collect($roleIds)
+            ->map(fn ($roleId) => (int) $roleId)
+            ->sort()
+            ->values();
+
+        $currentRoleIds = $user
+            ? $user->roles()->pluck('roles.id')->map(fn ($roleId) => (int) $roleId)->sort()->values()
+            : collect();
+
+        if ($requestedRoleIds->all() === $currentRoleIds->all()) {
+            return;
+        }
+
+        abort_unless(
+            $request->user() && $this->authorizer->allows($request->user(), 'security.roles.assign_capabilities.tenant'),
+            403,
+        );
     }
 
     /**

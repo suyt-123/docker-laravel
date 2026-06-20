@@ -398,6 +398,131 @@ class QuotationManagementTest extends TestCase
         Storage::disk('public')->assertExists($attachment->file_path);
     }
 
+    public function test_quotation_attachment_rejects_executable_files(): void
+    {
+        Storage::fake('public');
+
+        $user = $this->authorizedUser();
+        $customer = Customer::create(['name' => '惡意附件客戶']);
+        $quotation = Quotation::create([
+            'quotation_no' => 'Q-2026-ATTACH2',
+            'customer_id' => $customer->id,
+            'status' => 'accepted',
+            'subtotal' => 1000,
+            'total' => 1000,
+        ]);
+
+        $this
+            ->actingAs($user)
+            ->from(route('quotations.show', $quotation))
+            ->post(route('quotations.attachments.store', $quotation), [
+                'file' => UploadedFile::fake()->create('shell.php', 1, 'application/x-php'),
+            ])
+            ->assertRedirect(route('quotations.show', $quotation))
+            ->assertSessionHasErrors('file');
+
+        $this->assertDatabaseCount('document_attachments', 0);
+    }
+
+    public function test_quotation_attachment_rejects_disallowed_file_extensions(): void
+    {
+        Storage::fake('public');
+
+        $user = $this->authorizedUser();
+        $customer = Customer::create(['name' => '副檔名白名單客戶']);
+        $quotation = Quotation::create([
+            'quotation_no' => 'Q-2026-ATTACH3',
+            'customer_id' => $customer->id,
+            'status' => 'accepted',
+            'subtotal' => 1000,
+            'total' => 1000,
+        ]);
+
+        foreach ([
+            ['payload.html', 'text/html'],
+            ['payload.svg', 'image/svg+xml'],
+            ['payload.php', 'application/x-php'],
+            ['payload.phar', 'application/octet-stream'],
+            ['payload.phtml', 'application/x-php'],
+            ['payload.js', 'application/javascript'],
+            ['payload.zip', 'application/zip'],
+        ] as [$name, $mime]) {
+            $this
+                ->actingAs($user)
+                ->from(route('quotations.show', $quotation))
+                ->post(route('quotations.attachments.store', $quotation), [
+                    'file' => UploadedFile::fake()->create($name, 1, $mime),
+                ])
+                ->assertRedirect(route('quotations.show', $quotation))
+                ->assertSessionHasErrors('file');
+        }
+
+        $this->assertDatabaseCount('document_attachments', 0);
+    }
+
+    public function test_quotation_attachment_rejects_mime_spoofing(): void
+    {
+        Storage::fake('public');
+
+        $user = $this->authorizedUser();
+        $customer = Customer::create(['name' => 'MIME 偽造客戶']);
+        $quotation = Quotation::create([
+            'quotation_no' => 'Q-2026-ATTACH4',
+            'customer_id' => $customer->id,
+            'status' => 'accepted',
+            'subtotal' => 1000,
+            'total' => 1000,
+        ]);
+
+        $this
+            ->actingAs($user)
+            ->from(route('quotations.show', $quotation))
+            ->post(route('quotations.attachments.store', $quotation), [
+                'file' => UploadedFile::fake()->create('spoofed.jpg', 1, 'text/html'),
+            ])
+            ->assertRedirect(route('quotations.show', $quotation))
+            ->assertSessionHasErrors('file');
+
+        $this->assertDatabaseCount('document_attachments', 0);
+    }
+
+    public function test_quotation_attachment_allows_business_document_and_image_types(): void
+    {
+        Storage::fake('public');
+
+        $user = $this->authorizedUser();
+        $customer = Customer::create(['name' => '允許附件客戶']);
+        $quotation = Quotation::create([
+            'quotation_no' => 'Q-2026-ATTACH5',
+            'customer_id' => $customer->id,
+            'status' => 'accepted',
+            'subtotal' => 1000,
+            'total' => 1000,
+        ]);
+
+        foreach ([
+            ['signed.pdf', 'application/pdf'],
+            ['photo.jpg', 'image/jpeg'],
+            ['photo.png', 'image/png'],
+            ['photo.webp', 'image/webp'],
+            ['contract.docx', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'],
+            ['estimate.xlsx', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'],
+        ] as [$name, $mime]) {
+            $this
+                ->actingAs($user)
+                ->post(route('quotations.attachments.store', $quotation), [
+                    'file' => UploadedFile::fake()->create($name, 1, $mime),
+                ])
+                ->assertRedirect(route('quotations.show', $quotation))
+                ->assertSessionHasNoErrors();
+        }
+
+        $this->assertDatabaseCount('document_attachments', 6);
+        DocumentAttachment::all()->each(
+            fn (DocumentAttachment $attachment) => Storage::disk('public')->assertExists($attachment->file_path),
+        );
+    }
+
     public function test_reviewing_quotation_can_be_rejected_to_draft(): void
     {
         $user = $this->authorizedUser();

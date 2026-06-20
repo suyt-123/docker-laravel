@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Auth\CapabilityAuthorizer;
+use App\Auth\DataScope;
 use App\Http\Requests\StoreQuotationRequest;
 use App\Http\Requests\UpdateQuotationRequest;
 use App\Models\DocumentAttachment;
@@ -29,6 +30,7 @@ class QuotationController extends Controller
     public function __construct(
         private readonly CapabilityAuthorizer $authorizer,
         private readonly SettingService $settings,
+        private readonly DataScope $dataScope,
     )
     {
     }
@@ -109,6 +111,8 @@ class QuotationController extends Controller
 
     public function show(Request $request, Quotation $quotation): Response
     {
+        $this->ensureVisible($request, $quotation);
+
         $canViewCustomerContact = $this->canViewCustomerContact($request);
 
         $quotation->load([
@@ -180,8 +184,10 @@ class QuotationController extends Controller
         ]);
     }
 
-    public function pdf(Quotation $quotation): SymfonyResponse
+    public function pdf(Request $request, Quotation $quotation): SymfonyResponse
     {
+        $this->ensureVisible($request, $quotation);
+
         $quotation->load([
             'customer:id,name,phone,line_id,address,tax_id',
             'project:id,project_no,name,status,address',
@@ -291,8 +297,9 @@ class QuotationController extends Controller
             ]);
     }
 
-    public function edit(Quotation $quotation): Response
+    public function edit(Request $request, Quotation $quotation): Response
     {
+        $this->ensureVisible($request, $quotation);
         abort_unless($this->canEditQuotation($quotation), 403);
 
         $quotation->load('items');
@@ -330,6 +337,7 @@ class QuotationController extends Controller
 
     public function update(UpdateQuotationRequest $request, Quotation $quotation): RedirectResponse
     {
+        $this->ensureVisible($request, $quotation);
         abort_unless($this->canEditQuotation($quotation), 403);
 
         $data = $this->quotationData($request->validated());
@@ -344,8 +352,9 @@ class QuotationController extends Controller
             ->with('success', '報價單已更新。');
     }
 
-    public function submitReview(Quotation $quotation): RedirectResponse
+    public function submitReview(Request $request, Quotation $quotation): RedirectResponse
     {
+        $this->ensureVisible($request, $quotation);
         abort_unless($quotation->status === 'draft', 422, '只有草稿報價單可以送審。');
 
         $oldStatus = $quotation->status;
@@ -370,6 +379,7 @@ class QuotationController extends Controller
 
     public function approve(Request $request, Quotation $quotation): RedirectResponse
     {
+        $this->ensureVisible($request, $quotation);
         abort_unless($quotation->status === 'reviewing', 422, '只有審核中的報價單可以核准。');
 
         $oldStatus = $quotation->status;
@@ -392,8 +402,9 @@ class QuotationController extends Controller
             ->with('success', '報價單已核准。');
     }
 
-    public function reject(Quotation $quotation): RedirectResponse
+    public function reject(Request $request, Quotation $quotation): RedirectResponse
     {
+        $this->ensureVisible($request, $quotation);
         abort_unless($quotation->status === 'reviewing', 422, '只有審核中的報價單可以退回。');
 
         $oldStatus = $quotation->status;
@@ -416,8 +427,9 @@ class QuotationController extends Controller
             ->with('success', '報價單已退回草稿。');
     }
 
-    public function sendCustomer(Quotation $quotation): RedirectResponse
+    public function sendCustomer(Request $request, Quotation $quotation): RedirectResponse
     {
+        $this->ensureVisible($request, $quotation);
         abort_unless($quotation->status === 'approved', 422, '只有已核准報價單可以送客戶確認。');
 
         $oldStatus = $quotation->status;
@@ -443,6 +455,7 @@ class QuotationController extends Controller
 
     public function acceptCustomer(Request $request, Quotation $quotation): RedirectResponse
     {
+        $this->ensureVisible($request, $quotation);
         abort_unless(in_array($quotation->status, ['approved', 'sent'], true), 422, '只有已核准或已送出的報價單可以標記客戶接受。');
 
         $data = $request->validate([
@@ -472,8 +485,9 @@ class QuotationController extends Controller
             ->with('success', '報價單已標記為客戶接受並鎖定。');
     }
 
-    public function declineCustomer(Quotation $quotation): RedirectResponse
+    public function declineCustomer(Request $request, Quotation $quotation): RedirectResponse
     {
+        $this->ensureVisible($request, $quotation);
         abort_unless(in_array($quotation->status, ['approved', 'sent'], true), 422, '只有已核准或已送出的報價單可以標記客戶退回。');
 
         $oldStatus = $quotation->status;
@@ -498,6 +512,8 @@ class QuotationController extends Controller
 
     public function convertProject(Request $request, Quotation $quotation): RedirectResponse
     {
+        $this->ensureVisible($request, $quotation);
+
         if ($quotation->project_id) {
             return redirect()
                 ->route('projects.show', $quotation->project_id)
@@ -554,6 +570,7 @@ class QuotationController extends Controller
 
     public function voidQuotation(Request $request, Quotation $quotation): RedirectResponse
     {
+        $this->ensureVisible($request, $quotation);
         abort_if($quotation->project_id, 422, '已轉工程案件的報價單不可作廢。');
         abort_if($quotation->status === 'voided', 422, '此報價單已作廢。');
 
@@ -584,6 +601,7 @@ class QuotationController extends Controller
 
     public function reopen(Request $request, Quotation $quotation): RedirectResponse
     {
+        $this->ensureVisible($request, $quotation);
         abort_if($quotation->project_id, 422, '已轉工程案件的報價單不可重開版本。');
         abort_unless(in_array($quotation->status, ['approved', 'sent', 'accepted', 'rejected', 'voided'], true), 422, '目前狀態不可重開版本。');
 
@@ -654,10 +672,17 @@ class QuotationController extends Controller
 
     public function storeAttachment(Request $request, Quotation $quotation): RedirectResponse
     {
+        $this->ensureVisible($request, $quotation);
         abort_if($quotation->status === 'voided', 422, '已作廢報價單不可上傳附件。');
 
         $data = $request->validate([
-            'file' => ['required', 'file', 'max:10240'],
+            'file' => [
+                'required',
+                'file',
+                'max:10240',
+                'mimes:pdf,jpg,jpeg,png,webp,doc,docx,xls,xlsx',
+                'mimetypes:application/pdf,image/jpeg,image/png,image/webp,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            ],
             'description' => ['nullable', 'string', 'max:255'],
         ]);
 
@@ -688,12 +713,15 @@ class QuotationController extends Controller
             ->with('success', '附件已上傳。');
     }
 
-    public function destroyAttachment(DocumentAttachment $documentAttachment): RedirectResponse
+    public function destroyAttachment(Request $request, DocumentAttachment $documentAttachment): RedirectResponse
     {
+        abort_unless($this->authorizer->allows($request->user(), 'sales.quotations.update.tenant'), 403);
         abort_unless($documentAttachment->attachable_type === Quotation::class, 404);
 
         /** @var Quotation $quotation */
         $quotation = $documentAttachment->attachable;
+        abort_unless($quotation instanceof Quotation, 404);
+        $this->ensureVisible($request, $quotation);
 
         Storage::disk('public')->delete($documentAttachment->file_path);
         $documentAttachment->delete();
@@ -713,8 +741,9 @@ class QuotationController extends Controller
             ->with('success', '附件已刪除。');
     }
 
-    public function destroy(Quotation $quotation): RedirectResponse
+    public function destroy(Request $request, Quotation $quotation): RedirectResponse
     {
+        $this->ensureVisible($request, $quotation);
         abort_unless($quotation->status === 'draft', 422, '只有草稿報價單可以刪除。');
 
         $this->pruneQuotationPdfCache($quotation, storage_path('app/pdf/quotations'));
@@ -910,6 +939,20 @@ class QuotationController extends Controller
     private function canEditQuotation(Quotation $quotation): bool
     {
         return $quotation->status === 'draft' && $quotation->locked_at === null;
+    }
+
+    private function ensureVisible(Request $request, Quotation $quotation): void
+    {
+        if (! $quotation->project_id) {
+            return;
+        }
+
+        $visible = $this->dataScope
+            ->projects(Project::query(), $request->user())
+            ->whereKey($quotation->project_id)
+            ->exists();
+
+        abort_unless($visible, 403);
     }
 
     private function logWorkflow(

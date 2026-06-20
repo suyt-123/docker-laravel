@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Auth\DataScope;
 use App\Http\Requests\StoreFinancialRecordRequest;
 use App\Http\Requests\UpdateFinancialRecordRequest;
 use App\Models\FinancialRecord;
@@ -13,6 +14,10 @@ use Inertia\Response;
 
 class FinancialRecordController extends Controller
 {
+    public function __construct(private readonly DataScope $dataScope)
+    {
+    }
+
     public function index(Request $request): Response
     {
         $search = trim((string) $request->query('search', ''));
@@ -68,8 +73,10 @@ class FinancialRecordController extends Controller
             ->with('success', '收款紀錄已建立。');
     }
 
-    public function show(FinancialRecord $financialRecord): Response
+    public function show(Request $request, FinancialRecord $financialRecord): Response
     {
+        $this->ensureVisible($request, $financialRecord);
+
         $financialRecord->load(['project.customer:id,name', 'project:id,project_no,name,customer_id,contract_amount']);
 
         return Inertia::render('FinancialRecords/Show', [
@@ -79,8 +86,10 @@ class FinancialRecordController extends Controller
         ]);
     }
 
-    public function edit(FinancialRecord $financialRecord): Response
+    public function edit(Request $request, FinancialRecord $financialRecord): Response
     {
+        $this->ensureVisible($request, $financialRecord);
+
         return Inertia::render('FinancialRecords/Edit', [
             'record' => [
                 'id' => $financialRecord->id,
@@ -101,6 +110,8 @@ class FinancialRecordController extends Controller
 
     public function update(UpdateFinancialRecordRequest $request, FinancialRecord $financialRecord): RedirectResponse
     {
+        $this->ensureVisible($request, $financialRecord);
+
         $financialRecord->update($this->recordData($request->validated()));
 
         return redirect()
@@ -108,8 +119,10 @@ class FinancialRecordController extends Controller
             ->with('success', '收款紀錄已更新。');
     }
 
-    public function destroy(FinancialRecord $financialRecord): RedirectResponse
+    public function destroy(Request $request, FinancialRecord $financialRecord): RedirectResponse
     {
+        $this->ensureVisible($request, $financialRecord);
+
         $financialRecord->delete();
 
         return redirect()
@@ -171,6 +184,20 @@ class FinancialRecordController extends Controller
         }
 
         return $data;
+    }
+
+    private function ensureVisible(Request $request, FinancialRecord $financialRecord): void
+    {
+        if (! $financialRecord->project_id) {
+            return;
+        }
+
+        $visible = $this->dataScope
+            ->projects(Project::query(), $request->user())
+            ->whereKey($financialRecord->project_id)
+            ->exists();
+
+        abort_unless($visible, 403);
     }
 
     /**

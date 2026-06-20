@@ -136,8 +136,10 @@ class DispatchController extends Controller
             ->with('success', '派工已建立。');
     }
 
-    public function show(Dispatch $dispatch): Response
+    public function show(Request $request, Dispatch $dispatch): Response
     {
+        $this->ensureVisible($request, $dispatch);
+
         $dispatch->load([
             'project.customer:id,name',
             'project:id,customer_id,project_no,name,address,latitude,longitude',
@@ -181,8 +183,10 @@ class DispatchController extends Controller
         ]);
     }
 
-    public function edit(Dispatch $dispatch): Response
+    public function edit(Request $request, Dispatch $dispatch): Response
     {
+        $this->ensureVisible($request, $dispatch);
+
         $dispatch->load('workers');
 
         return Inertia::render('Dispatches/Edit', [
@@ -211,6 +215,8 @@ class DispatchController extends Controller
 
     public function update(UpdateDispatchRequest $request, Dispatch $dispatch): RedirectResponse
     {
+        $this->ensureVisible($request, $dispatch);
+
         $data = $request->validated();
         $workers = $data['workers'] ?? [];
         unset($data['workers']);
@@ -224,8 +230,10 @@ class DispatchController extends Controller
             ->with('success', '派工已更新。');
     }
 
-    public function destroy(Dispatch $dispatch): RedirectResponse
+    public function destroy(Request $request, Dispatch $dispatch): RedirectResponse
     {
+        $this->ensureVisible($request, $dispatch);
+
         $dispatch->delete();
 
         return redirect()
@@ -340,6 +348,16 @@ class DispatchController extends Controller
     private function conflictLabel(Dispatch $dispatch): string
     {
         return trim(($dispatch->project?->project_no ? $dispatch->project->project_no.' · ' : '').$dispatch->work_item);
+    }
+
+    private function ensureVisible(Request $request, Dispatch $dispatch): void
+    {
+        $visible = $this->dataScope
+            ->dispatches(Dispatch::query(), $request->user())
+            ->whereKey($dispatch->id)
+            ->exists();
+
+        abort_unless($visible, 403);
     }
 
     private function timePayload($value): ?string

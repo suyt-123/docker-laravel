@@ -35,7 +35,7 @@ export default function Schedule({ days, dispatches, filters, statuses }) {
                 <div className="mx-auto max-w-7xl space-y-5 px-4 sm:px-6 lg:px-8">
                     <form
                         onSubmit={submit}
-                        className="flex flex-col gap-3 bg-white p-4 shadow-sm sm:rounded-lg sm:flex-row sm:items-center"
+                        className="flex flex-col gap-3 bg-white p-4 shadow-sm sm:rounded-lg sm:flex-row sm:flex-wrap sm:items-center"
                     >
                         <TextInput
                             type="date"

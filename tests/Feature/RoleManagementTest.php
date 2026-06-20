@@ -120,6 +120,35 @@ class RoleManagementTest extends TestCase
         ]);
     }
 
+    public function test_owner_can_create_and_update_custom_role_capabilities(): void
+    {
+        $owner = $this->userWithRole('owner');
+        $viewProjects = Capability::where('code', 'projects.projects.view.tenant')->firstOrFail();
+        $viewFinancials = Capability::where('code', 'finance.financial_records.view.tenant')->firstOrFail();
+
+        $this
+            ->actingAs($owner)
+            ->post(route('roles.store'), [
+                'name' => 'Owner Created Role',
+                'code' => 'owner_created_role',
+                'capabilities' => [$viewProjects->id],
+            ])
+            ->assertRedirect();
+
+        $role = Role::where('code', 'owner_created_role')->firstOrFail();
+
+        $this
+            ->actingAs($owner)
+            ->patch(route('roles.update', $role), [
+                'name' => 'Owner Updated Role',
+                'code' => 'owner_created_role',
+                'capabilities' => [$viewProjects->id, $viewFinancials->id],
+            ])
+            ->assertRedirect(route('roles.show', $role));
+
+        $this->assertTrue($role->refresh()->capabilities()->whereKey($viewFinancials->id)->exists());
+    }
+
     public function test_protected_system_role_cannot_be_deleted(): void
     {
         $admin = $this->adminUser();
@@ -159,10 +188,15 @@ class RoleManagementTest extends TestCase
 
     private function adminUser(): User
     {
+        return $this->userWithRole('admin');
+    }
+
+    private function userWithRole(string $roleCode): User
+    {
         $this->seed(RbacSeeder::class);
 
         $user = User::factory()->create();
-        $role = Role::where('code', 'admin')->firstOrFail();
+        $role = Role::where('code', $roleCode)->firstOrFail();
         $user->roles()->attach($role);
 
         return $user;

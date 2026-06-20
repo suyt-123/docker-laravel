@@ -12,7 +12,7 @@ export default function Show({ worker }) {
     const canDelete = can(CAPABILITIES.workers.delete);
     const destroyWorker = () => { if (window.confirm(`確定要刪除「${worker.name}」嗎？`)) router.delete(route('workers.destroy', worker.id)); };
     return (
-        <AuthenticatedLayout header={<div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><h2 className="text-xl font-semibold leading-tight text-gray-800">{worker.name}</h2><div className="flex gap-2"><Link href={route('workers.index')}><SecondaryButton type="button">返回列表</SecondaryButton></Link>{canUpdate && <Link href={route('workers.edit', worker.id)}><PrimaryButton>編輯師傅</PrimaryButton></Link>}</div></div>}>
+        <AuthenticatedLayout header={<div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between"><h2 className="text-xl font-semibold leading-tight text-gray-800">{worker.name}</h2><div className="flex gap-2"><Link href={route('workers.index')}><SecondaryButton type="button">返回列表</SecondaryButton></Link>{canUpdate && <Link href={route('workers.edit', worker.id)}><PrimaryButton>編輯師傅</PrimaryButton></Link>}</div></div>}>
             <Head title={worker.name} />
             <div className="py-8"><div className="mx-auto max-w-7xl space-y-5 px-4 sm:px-6 lg:px-8">
                 {flash.success && <div className="rounded-md border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">{flash.success}</div>}

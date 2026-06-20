@@ -83,8 +83,10 @@ class ProjectChangeOrderController extends Controller
             ->with('success', '工程變更追加單已建立。');
     }
 
-    public function show(ProjectChangeOrder $projectChangeOrder): Response
+    public function show(Request $request, ProjectChangeOrder $projectChangeOrder): Response
     {
+        $this->ensureVisible($request, $projectChangeOrder);
+
         $projectChangeOrder->load([
             'project.customer:id,name',
             'project:id,project_no,name,customer_id',
@@ -102,6 +104,8 @@ class ProjectChangeOrderController extends Controller
 
     public function edit(Request $request, ProjectChangeOrder $projectChangeOrder): Response
     {
+        $this->ensureVisible($request, $projectChangeOrder);
+
         abort_if($projectChangeOrder->financial_record_id !== null, 422, '已轉收款紀錄的追加單不可編輯。');
         abort_unless(in_array($projectChangeOrder->status, ['draft'], true), 422, '只有草稿追加單可以編輯。');
 
@@ -128,6 +132,8 @@ class ProjectChangeOrderController extends Controller
 
     public function update(UpdateProjectChangeOrderRequest $request, ProjectChangeOrder $projectChangeOrder): RedirectResponse
     {
+        $this->ensureVisible($request, $projectChangeOrder);
+
         abort_if($projectChangeOrder->financial_record_id !== null, 422, '已轉收款紀錄的追加單不可編輯。');
         abort_unless(in_array($projectChangeOrder->status, ['draft'], true), 422, '只有草稿追加單可以編輯。');
 
@@ -138,8 +144,10 @@ class ProjectChangeOrderController extends Controller
             ->with('success', '工程變更追加單已更新。');
     }
 
-    public function destroy(ProjectChangeOrder $projectChangeOrder): RedirectResponse
+    public function destroy(Request $request, ProjectChangeOrder $projectChangeOrder): RedirectResponse
     {
+        $this->ensureVisible($request, $projectChangeOrder);
+
         abort_if($projectChangeOrder->financial_record_id !== null, 422, '已轉收款紀錄的追加單不可刪除。');
         abort_unless(in_array($projectChangeOrder->status, ['draft', 'cancelled'], true), 422, '只有草稿或已取消追加單可以刪除。');
 
@@ -152,6 +160,8 @@ class ProjectChangeOrderController extends Controller
 
     public function convertFinancialRecord(Request $request, ProjectChangeOrder $projectChangeOrder): RedirectResponse
     {
+        $this->ensureVisible($request, $projectChangeOrder);
+
         abort_unless($projectChangeOrder->status === 'customer_confirmed', 422, '只有客戶已確認的追加單可以轉成追加款。');
         abort_if($projectChangeOrder->financial_record_id !== null, 422, '此追加單已轉成收款紀錄。');
         $this->ensureFormalQuotationReady($projectChangeOrder);
@@ -197,8 +207,10 @@ class ProjectChangeOrderController extends Controller
             ->with('success', '追加單已轉成追加款收款紀錄。');
     }
 
-    public function submitReview(ProjectChangeOrder $projectChangeOrder): RedirectResponse
+    public function submitReview(Request $request, ProjectChangeOrder $projectChangeOrder): RedirectResponse
     {
+        $this->ensureVisible($request, $projectChangeOrder);
+
         abort_unless($projectChangeOrder->status === 'draft', 422, '只有草稿追加單可以送審。');
 
         $projectChangeOrder->update([
@@ -215,6 +227,8 @@ class ProjectChangeOrderController extends Controller
 
     public function approve(Request $request, ProjectChangeOrder $projectChangeOrder): RedirectResponse
     {
+        $this->ensureVisible($request, $projectChangeOrder);
+
         abort_unless($projectChangeOrder->status === 'pending_approval', 422, '只有待主管核准的追加單可以核准。');
 
         $projectChangeOrder->update([
@@ -230,8 +244,10 @@ class ProjectChangeOrderController extends Controller
             ->with('success', '追加單已核准，等待客戶確認。');
     }
 
-    public function confirmCustomer(ProjectChangeOrder $projectChangeOrder): RedirectResponse
+    public function confirmCustomer(Request $request, ProjectChangeOrder $projectChangeOrder): RedirectResponse
     {
+        $this->ensureVisible($request, $projectChangeOrder);
+
         abort_unless($projectChangeOrder->status === 'approved', 422, '只有主管已核准的追加單可以標記客戶確認。');
         $this->ensureFormalQuotationReady($projectChangeOrder);
 
@@ -248,8 +264,10 @@ class ProjectChangeOrderController extends Controller
             ->with('success', '追加單已標記為客戶確認。');
     }
 
-    public function cancel(ProjectChangeOrder $projectChangeOrder): RedirectResponse
+    public function cancel(Request $request, ProjectChangeOrder $projectChangeOrder): RedirectResponse
     {
+        $this->ensureVisible($request, $projectChangeOrder);
+
         abort_if($projectChangeOrder->status === 'converted', 422, '已轉追加款的追加單不可取消。');
 
         $projectChangeOrder->update(['status' => 'cancelled']);
@@ -263,6 +281,8 @@ class ProjectChangeOrderController extends Controller
 
     public function createQuotation(Request $request, ProjectChangeOrder $projectChangeOrder): RedirectResponse
     {
+        $this->ensureVisible($request, $projectChangeOrder);
+
         abort_if($projectChangeOrder->quotation_id !== null, 422, '此追加單已建立追加報價單。');
         abort_unless($projectChangeOrder->requires_formal_quotation, 422, '此追加單未設定需要正式報價。');
         abort_unless(in_array($projectChangeOrder->status, ['draft', 'pending_approval', 'approved'], true), 422, '此追加單目前不可建立追加報價單。');
@@ -424,6 +444,16 @@ class ProjectChangeOrderController extends Controller
 
         abort_unless($projectChangeOrder->quotation, 422, '此追加單需要正式報價，請先建立並核准追加報價單。');
         abort_unless($projectChangeOrder->quotation->status === 'approved', 422, '正式追加報價單尚未核准。');
+    }
+
+    private function ensureVisible(Request $request, ProjectChangeOrder $projectChangeOrder): void
+    {
+        $visible = $this->dataScope
+            ->projects(Project::query(), $request->user())
+            ->whereKey($projectChangeOrder->project_id)
+            ->exists();
+
+        abort_unless($visible, 403);
     }
 
     private function nextQuotationNo(): string

@@ -7,7 +7,7 @@ return [
         'allow_manual_correction' => env('ATTENDANCE_ALLOW_MANUAL_CORRECTION', false),
     ],
     'company' => [
-        'name' => env('COMPANY_NAME', '鐵皮屋工程管理系統'),
+        'name' => env('COMPANY_NAME', '工程管理系統'),
         'phone' => env('COMPANY_PHONE', ''),
         'address' => env('COMPANY_ADDRESS', ''),
         'tax_id' => env('COMPANY_TAX_ID', ''),
