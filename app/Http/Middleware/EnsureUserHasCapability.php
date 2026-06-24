@@ -9,9 +9,7 @@ use Symfony\Component\HttpFoundation\Response;
 
 class EnsureUserHasCapability
 {
-    public function __construct(private readonly CapabilityAuthorizer $authorizer)
-    {
-    }
+    public function __construct(private readonly CapabilityAuthorizer $authorizer) {}
 
     /**
      * @param  Closure(Request): Response  $next

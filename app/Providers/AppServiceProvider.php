@@ -2,8 +2,10 @@
 
 namespace App\Providers;
 
-use App\Models\Customer;
+use App\Events\WorkflowNotificationRequested;
+use App\Listeners\SendWorkflowNotification;
 use App\Models\AttendanceRecord;
+use App\Models\Customer;
 use App\Models\CustomerContact;
 use App\Models\Dispatch;
 use App\Models\Equipment;
@@ -24,12 +26,14 @@ use App\Models\QuotationItem;
 use App\Models\QuotationTemplate;
 use App\Models\QuotationTemplateItem;
 use App\Models\Role;
-use App\Models\SystemSetting;
 use App\Models\Supplier;
+use App\Models\SystemSetting;
 use App\Models\User;
 use App\Models\WorkCrew;
 use App\Models\Worker;
 use App\Observers\ActivityLogObserver;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Vite;
 use Illuminate\Support\ServiceProvider;
 
@@ -49,6 +53,7 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         Vite::prefetch(concurrency: 3);
+        Event::listen(WorkflowNotificationRequested::class, SendWorkflowNotification::class);
 
         foreach ($this->auditedModels() as $model) {
             $model::observe(ActivityLogObserver::class);
@@ -56,7 +61,7 @@ class AppServiceProvider extends ServiceProvider
     }
 
     /**
-     * @return array<int, class-string<\Illuminate\Database\Eloquent\Model>>
+     * @return array<int, class-string<Model>>
      */
     private function auditedModels(): array
     {

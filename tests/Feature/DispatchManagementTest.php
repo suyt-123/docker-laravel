@@ -5,7 +5,6 @@ namespace Tests\Feature;
 use App\Models\Customer;
 use App\Models\Dispatch;
 use App\Models\Project;
-use App\Models\User;
 use App\Models\WorkCrew;
 use App\Models\Worker;
 use Illuminate\Foundation\Testing\RefreshDatabase;

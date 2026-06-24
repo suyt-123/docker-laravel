@@ -15,9 +15,7 @@ use Inertia\Response;
 
 class CustomerController extends Controller
 {
-    public function __construct(private readonly CapabilityAuthorizer $authorizer)
-    {
-    }
+    public function __construct(private readonly CapabilityAuthorizer $authorizer) {}
 
     public function index(Request $request): Response
     {

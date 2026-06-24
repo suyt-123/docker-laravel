@@ -7,11 +7,11 @@ use App\Http\Requests\StoreAttendanceRecordRequest;
 use App\Models\AttendanceRecord;
 use App\Models\Dispatch;
 use App\Models\Worker;
+use App\Services\Field\AttendancePhotoService;
 use App\Services\SettingService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -20,9 +20,8 @@ class AttendanceRecordController extends Controller
     public function __construct(
         private readonly DataScope $dataScope,
         private readonly SettingService $settings,
-    )
-    {
-    }
+        private readonly AttendancePhotoService $photos,
+    ) {}
 
     public function index(Request $request): Response
     {
@@ -102,7 +101,7 @@ class AttendanceRecordController extends Controller
             'is_duplicate' => $flags['is_duplicate'],
             'requires_attention' => $flags['requires_attention'],
             'anomaly_reason' => $flags['anomaly_reason'],
-            'photo_path' => $request->file('photo')?->store('attendance-photos/'.now()->format('Y/m'), 'public'),
+            'photo_path' => $this->photos->store($request->file('photo')),
             'note' => $data['note'] ?? null,
         ]);
 
@@ -127,10 +126,7 @@ class AttendanceRecordController extends Controller
     {
         $this->ensureVisible($request, $attendanceRecord);
 
-        if ($attendanceRecord->photo_path) {
-            Storage::disk('public')->delete($attendanceRecord->photo_path);
-        }
-
+        $this->photos->delete($attendanceRecord->photo_path);
         $attendanceRecord->delete();
 
         return redirect()
@@ -291,7 +287,7 @@ class AttendanceRecordController extends Controller
             'is_duplicate' => $record->is_duplicate,
             'requires_attention' => $record->requires_attention,
             'anomaly_reason' => $record->anomaly_reason,
-            'photo_url' => $record->photo_path ? Storage::disk('public')->url($record->photo_path) : null,
+            'photo_url' => $this->photos->url($record->photo_path),
             ...($detail ? [
                 'note' => $record->note,
                 'photo_path' => $record->photo_path,

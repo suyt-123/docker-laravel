@@ -7,7 +7,6 @@ use App\Models\DocumentAttachment;
 use App\Models\Material;
 use App\Models\Project;
 use App\Models\Quotation;
-use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -48,6 +47,10 @@ class QuotationManagementTest extends TestCase
             ->assertInertia(fn ($page) => $page
                 ->component('Quotations/Index')
                 ->has('quotations.data', 1)
+                ->where('quotations.data.0.quotation_no', 'Q-2026-0001')
+                ->where('quotations.data.0.customer.name', '報價客戶')
+                ->where('quotations.data.0.items_count', 1)
+                ->where('statuses.draft', '草稿')
             );
     }
 

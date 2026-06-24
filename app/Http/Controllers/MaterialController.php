@@ -5,15 +5,16 @@ namespace App\Http\Controllers;
 use App\Http\Requests\StoreMaterialRequest;
 use App\Http\Requests\UpdateMaterialRequest;
 use App\Models\Material;
-use App\Models\MaterialCategory;
+use App\Presenters\Inventory\MaterialPresenter;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class MaterialController extends Controller
 {
+    public function __construct(private readonly MaterialPresenter $materialPresenter) {}
+
     public function index(Request $request): Response
     {
         $search = trim((string) $request->query('search', ''));
@@ -34,47 +35,31 @@ class MaterialController extends Controller
             ->latest()
             ->paginate(12)
             ->withQueryString()
-            ->through(fn (Material $material) => [
-                'id' => $material->id,
-                'name' => $material->name,
-                'spec' => $material->spec,
-                'unit' => $material->unit,
-                'category' => $material->category,
-                'length' => $material->length,
-                'width' => $material->width,
-                'thickness' => $material->thickness,
-                'weight' => $material->weight,
-                'cost_price' => $material->cost_price,
-                'sale_price' => $material->sale_price,
-                'safe_stock' => $material->safe_stock,
-                'current_stock' => $material->current_stock,
-                'quotation_items_count' => $material->quotation_items_count,
-                'inventory_transactions_count' => $material->inventory_transactions_count,
-            ]);
+            ->through(fn (Material $material) => $this->materialPresenter->indexItem($material));
 
         return Inertia::render('Materials/Index', [
             'materials' => $materials,
-            'categories' => $this->categories(),
+            'categories' => $this->materialPresenter->categories(),
             'filters' => [
                 'search' => $search,
                 'category' => $categoryId,
                 'stock' => $stock,
             ],
-            'units' => $this->units(),
+            'units' => $this->materialPresenter->units(),
         ]);
     }
 
     public function create(): Response
     {
         return Inertia::render('Materials/Create', [
-            'categories' => $this->categories(),
-            'units' => $this->units(),
+            'categories' => $this->materialPresenter->categories(),
+            'units' => $this->materialPresenter->units(),
         ]);
     }
 
     public function store(StoreMaterialRequest $request): RedirectResponse
     {
-        $material = Material::create($this->materialData($request->validated()));
+        $material = Material::create($this->materialPresenter->materialData($request->validated()));
 
         return redirect()
             ->route('materials.show', $material)
@@ -90,53 +75,22 @@ class MaterialController extends Controller
         ]);
 
         return Inertia::render('Materials/Show', [
-            'material' => [
-                'id' => $material->id,
-                'name' => $material->name,
-                'spec' => $material->spec,
-                'unit' => $material->unit,
-                'category' => $material->category,
-                'length' => $material->length,
-                'width' => $material->width,
-                'thickness' => $material->thickness,
-                'weight' => $material->weight,
-                'cost_price' => $material->cost_price,
-                'sale_price' => $material->sale_price,
-                'safe_stock' => $material->safe_stock,
-                'current_stock' => $material->current_stock,
-                'quotation_items' => $material->quotationItems,
-                'inventory_transactions' => $material->inventoryTransactions,
-            ],
+            'material' => $this->materialPresenter->show($material),
         ]);
     }
 
     public function edit(Material $material): Response
     {
         return Inertia::render('Materials/Edit', [
-            'material' => [
-                'id' => $material->id,
-                'material_category_id' => $material->material_category_id,
-                'category_name' => '',
-                'name' => $material->name,
-                'spec' => $material->spec,
-                'unit' => $material->unit,
-                'length' => $material->length,
-                'width' => $material->width,
-                'thickness' => $material->thickness,
-                'weight' => $material->weight,
-                'cost_price' => $material->cost_price,
-                'sale_price' => $material->sale_price,
-                'safe_stock' => $material->safe_stock,
-                'current_stock' => $material->current_stock,
-            ],
-            'categories' => $this->categories(),
-            'units' => $this->units(),
+            'material' => $this->materialPresenter->form($material),
+            'categories' => $this->materialPresenter->categories(),
+            'units' => $this->materialPresenter->units(),
         ]);
     }
 
     public function update(UpdateMaterialRequest $request, Material $material): RedirectResponse
     {
-        $data = $this->materialData($request->validated());
+        $data = $this->materialPresenter->materialData($request->validated());
         $data['current_stock'] = $material->current_stock;
 
         $material->update($data);
@@ -153,49 +107,5 @@ class MaterialController extends Controller
         return redirect()
             ->route('materials.index')
             ->with('success', '材料品項已刪除。');
-    }
-
-    /**
-     * @return \Illuminate\Database\Eloquent\Collection<int, MaterialCategory>
-     */
-    private function categories()
-    {
-        return MaterialCategory::query()
-            ->orderBy('name')
-            ->get(['id', 'name', 'code']);
-    }
-
-    /**
-     * @return array<int, string>
-     */
-    private function units(): array
-    {
-        return ['支', '片', '包', '箱', 'kg', '噸', '坪', '才', '米', '公尺', '組', '式'];
-    }
-
-    /**
-     * @param  array<string, mixed>  $data
-     * @return array<string, mixed>
-     */
-    private function materialData(array $data): array
-    {
-        if (filled($data['category_name'] ?? null)) {
-            $categoryName = trim((string) $data['category_name']);
-            $category = MaterialCategory::firstOrCreate(
-                ['code' => Str::slug($categoryName) ?: Str::lower(Str::random(8))],
-                ['name' => $categoryName],
-            );
-            $data['material_category_id'] = $category->id;
-        }
-
-        unset($data['category_name']);
-
-        return [
-            ...$data,
-            'cost_price' => (int) ($data['cost_price'] ?? 0),
-            'sale_price' => (int) ($data['sale_price'] ?? 0),
-            'safe_stock' => $data['safe_stock'] ?? 0,
-            'current_stock' => $data['current_stock'] ?? 0,
-        ];
     }
 }

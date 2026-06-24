@@ -6,10 +6,12 @@ use App\Models\AttendanceRecord;
 use App\Models\Customer;
 use App\Models\Dispatch;
 use App\Models\Project;
+use App\Models\Role;
 use App\Models\SystemSetting;
 use App\Models\User;
 use App\Models\WorkCrew;
 use App\Models\Worker;
+use Database\Seeders\RbacSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -226,13 +228,12 @@ class AttendanceRecordTest extends TestCase
             );
     }
 
-
     public function test_worker_can_only_clock_assigned_dispatch(): void
     {
-        $this->seed(\Database\Seeders\RbacSeeder::class);
+        $this->seed(RbacSeeder::class);
 
         $user = User::factory()->create();
-        $role = \App\Models\Role::where('code', 'worker')->firstOrFail();
+        $role = Role::where('code', 'worker')->firstOrFail();
         $user->roles()->attach($role);
         [, $dispatch] = $this->siteContext();
         Worker::create([

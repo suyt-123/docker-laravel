@@ -18,9 +18,7 @@ use Inertia\Response;
 
 class DispatchController extends Controller
 {
-    public function __construct(private readonly DataScope $dataScope)
-    {
-    }
+    public function __construct(private readonly DataScope $dataScope) {}
 
     public function index(Request $request): Response
     {

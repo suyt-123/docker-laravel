@@ -12,9 +12,7 @@ use Inertia\Response;
 
 class SystemSettingController extends Controller
 {
-    public function __construct(private readonly SettingService $settings)
-    {
-    }
+    public function __construct(private readonly SettingService $settings) {}
 
     public function edit(): Response
     {

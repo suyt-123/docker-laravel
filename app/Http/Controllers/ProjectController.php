@@ -6,22 +6,19 @@ use App\Auth\CapabilityAuthorizer;
 use App\Auth\DataScope;
 use App\Http\Requests\StoreProjectRequest;
 use App\Http\Requests\UpdateProjectRequest;
+use App\Models\Customer;
 use App\Models\DocumentVersion;
 use App\Models\FinancialRecord;
-use App\Models\Customer;
 use App\Models\Project;
 use App\Models\ProjectChangeOrder;
 use App\Models\User;
 use App\Models\WorkCrew;
-use App\Services\SettingService;
-use App\Support\ActivityLogger;
+use App\Services\Documents\InvoicePdfService;
+use App\Services\Files\UploadedFileStorage;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\File;
-use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
-use Spatie\Browsershot\Browsershot;
 use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
 
 class ProjectController extends Controller
@@ -29,9 +26,9 @@ class ProjectController extends Controller
     public function __construct(
         private readonly CapabilityAuthorizer $authorizer,
         private readonly DataScope $dataScope,
-        private readonly SettingService $settings,
-    ) {
-    }
+        private readonly InvoicePdfService $invoicePdfs,
+        private readonly UploadedFileStorage $files,
+    ) {}
 
     public function index(Request $request): Response
     {
@@ -234,110 +231,8 @@ class ProjectController extends Controller
         ]);
 
         $ids = collect($data['financial_record_ids'])->map(fn ($id) => (int) $id)->values();
-        $project->load('customer:id,name,phone,line_id,address,tax_id');
 
-        $records = FinancialRecord::query()
-            ->where('project_id', $project->id)
-            ->whereIn('id', $ids)
-            ->whereIn('status', ['pending', 'overdue'])
-            ->orderByRaw('due_date is null')
-            ->orderBy('due_date')
-            ->get();
-
-        abort_unless($records->count() === $ids->count(), 422, '請款單只能包含同一工程的待收或逾期款項。');
-
-        $total = (int) $records->sum('amount');
-        $html = view('pdf.invoice', [
-            'project' => $project,
-            'records' => $records,
-            'types' => $this->financialRecordTypes(),
-            'statuses' => $this->financialRecordStatuses(),
-            'settings' => $this->settings->nested(),
-            'total' => $total,
-            'issuedAt' => now(),
-        ])->render();
-
-        if (config('documents.pdf_renderer') === 'html') {
-            return response($html, 200, [
-                'Content-Type' => 'text/html; charset=UTF-8',
-                'Content-Disposition' => 'inline; filename="'.$project->project_no.'-invoice.html"',
-            ]);
-        }
-
-        $directory = storage_path('app/pdf/invoices');
-        File::ensureDirectoryExists($directory);
-        $tmpDirectory = storage_path('app/tmp');
-        File::ensureDirectoryExists($tmpDirectory);
-        File::ensureDirectoryExists($tmpDirectory.DIRECTORY_SEPARATOR.'chromium-profile');
-
-        $path = $directory.DIRECTORY_SEPARATOR.$project->project_no.'-invoice-'.now()->format('YmdHis').'-'.uniqid().'.pdf';
-        $footerHtml = <<<'HTML'
-            <div style="width:100%; padding:0 12mm; color:#6b7280; font-family:'Noto Sans CJK TC','Noto Sans TC','DejaVu Sans',sans-serif; font-size:11px; text-align:center;">
-                本請款單由系統產生，實際付款條件以雙方確認版本為準。
-                <span style="margin-left:8px;">第 <span class="pageNumber"></span> 頁 / 共 <span class="totalPages"></span> 頁</span>
-            </div>
-        HTML;
-
-        Browsershot::html($html)
-            ->setNodeBinary(config('services.browsershot.node_binary', '/usr/bin/node'))
-            ->setChromePath(config('services.browsershot.chrome_path', '/usr/bin/chromium'))
-            ->setUserDataDir($tmpDirectory.DIRECTORY_SEPARATOR.'chromium-profile')
-            ->setEnvironmentOptions([
-                'HOME' => '/tmp',
-                'XDG_CACHE_HOME' => '/tmp',
-                'XDG_CONFIG_HOME' => '/tmp',
-            ])
-            ->noSandbox()
-            ->showBackground()
-            ->showBrowserHeaderAndFooter()
-            ->hideHeader()
-            ->footerHtml($footerHtml)
-            ->format('A4')
-            ->margins(14, 12, 22, 12)
-            ->timeout(180)
-            ->protocolTimeout(180)
-            ->addChromiumArguments([
-                'disable-crash-reporter',
-                'disable-crashpad',
-                'disable-dev-shm-usage',
-                'disable-gpu',
-                'disable-setuid-sandbox',
-                'no-zygote',
-            ])
-            ->save($path);
-
-        $this->recordDocumentVersion(
-            $project,
-            'invoice_pdf',
-            $path,
-            $project->project_no.'-invoice.pdf',
-            [
-                'financial_record_ids' => $ids->all(),
-                'total_amount' => $total,
-                'issued_at' => now()->toDateString(),
-            ],
-        );
-
-        app(ActivityLogger::class)->log(
-            'export_pdf',
-            'financial_record.invoice_pdf_exported',
-            $project,
-            null,
-            [
-                'project_id' => $project->id,
-                'project_no' => $project->project_no,
-                'financial_record_ids' => $ids->all(),
-                'total_amount' => $total,
-            ],
-            '合併請款單 PDF 已匯出',
-            'financial_records',
-        );
-
-        return response()
-            ->file($path, [
-                'Content-Type' => 'application/pdf',
-                'Content-Disposition' => $this->pdfDisposition().' filename="'.$project->project_no.'-invoice.pdf"',
-            ]);
+        return $this->invoicePdfs->render($project, $ids, $request->user());
     }
 
     public function edit(Request $request, Project $project): Response
@@ -403,7 +298,7 @@ class ProjectController extends Controller
 
         $project->delete();
 
-        Storage::disk('public')->delete([
+        $this->files->deletePublic([
             ...$photoPaths,
             ...$attendancePhotoPaths,
         ]);
@@ -421,52 +316,6 @@ class ProjectController extends Controller
             ->exists();
 
         abort_unless($visible, 403);
-    }
-
-    /**
-     * @param  array<string, mixed>  $metadata
-     */
-    private function recordDocumentVersion(Project $project, string $category, string $path, string $fileName, array $metadata = []): void
-    {
-        $hash = File::exists($path) ? hash_file('sha256', $path) : null;
-        $existing = DocumentVersion::query()
-            ->where('document_type', Project::class)
-            ->where('document_id', $project->id)
-            ->where('category', $category)
-            ->where('file_hash', $hash)
-            ->first();
-
-        if ($existing) {
-            return;
-        }
-
-        DocumentVersion::query()
-            ->where('document_type', Project::class)
-            ->where('document_id', $project->id)
-            ->where('category', $category)
-            ->where('status', 'active')
-            ->update(['status' => 'superseded']);
-
-        $nextVersion = ((int) DocumentVersion::query()
-            ->where('document_type', Project::class)
-            ->where('document_id', $project->id)
-            ->where('category', $category)
-            ->max('version_number')) + 1;
-
-        DocumentVersion::create([
-            'document_type' => Project::class,
-            'document_id' => $project->id,
-            'category' => $category,
-            'version_number' => $nextVersion,
-            'status' => 'active',
-            'file_path' => $path,
-            'file_name' => $fileName,
-            'size' => File::exists($path) ? File::size($path) : 0,
-            'file_hash' => $hash,
-            'generated_at' => now(),
-            'generated_by' => request()->user()?->id,
-            'metadata' => $metadata,
-        ]);
     }
 
     /**
@@ -549,11 +398,6 @@ class ProjectController extends Controller
     private function canAny(Request $request, array $capabilities): bool
     {
         return collect($capabilities)->contains(fn (string $capability) => $this->authorizer->allows($request->user(), $capability));
-    }
-
-    private function pdfDisposition(): string
-    {
-        return config('documents.pdf_disposition') === 'attachment' ? 'attachment;' : 'inline;';
     }
 
     /**

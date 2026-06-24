@@ -7,7 +7,6 @@ use App\Models\FinancialRecord;
 use App\Models\Project;
 use App\Models\ProjectChangeOrder;
 use App\Models\Quotation;
-use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -37,6 +36,24 @@ class ProjectChangeOrderManagementTest extends TestCase
             ->assertInertia(fn ($page) => $page
                 ->component('ProjectChangeOrders/Index')
                 ->has('orders.data', 1)
+                ->where('orders.data.0.title', '追加排水槽')
+                ->where('orders.data.0.project.project_no', 'TPH-2026-0001')
+                ->where('orders.data.0.project.customer.name', '追加單客戶')
+                ->where('orders.data.0.financial_record', null)
+                ->where('orders.data.0.can_submit_review', true)
+                ->where('statuses.draft', '草稿')
+            );
+
+        $this->actingAs($user)
+            ->get(route('project-change-orders.create', ['project_id' => $project->id]))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('ProjectChangeOrders/Create')
+                ->where('order.project_id', (string) $project->id)
+                ->where('order.status', 'draft')
+                ->where('order.requires_formal_quotation', false)
+                ->has('options.projects', 1)
+                ->where('options.projects.0.customer.name', '追加單客戶')
             );
     }
 

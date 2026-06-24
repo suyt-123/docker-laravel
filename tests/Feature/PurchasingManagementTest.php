@@ -122,6 +122,62 @@ class PurchasingManagementTest extends TestCase
         ]);
     }
 
+    public function test_user_can_update_and_delete_unreceived_purchase_order(): void
+    {
+        $user = $this->authorizedUser(roleCode: 'purchasing');
+        $supplier = Supplier::create(['name' => '採購更新供應商']);
+        $material = Material::create(['name' => '採購更新材料', 'unit' => '支']);
+        $order = PurchaseOrder::create([
+            'purchase_order_no' => 'PO-2026-0201',
+            'supplier_id' => $supplier->id,
+            'status' => 'draft',
+        ]);
+        $order->items()->create([
+            'material_id' => $material->id,
+            'name' => '採購更新材料',
+            'unit' => '支',
+            'quantity' => 2,
+            'unit_cost' => 500,
+            'subtotal' => 1000,
+        ]);
+
+        $this->actingAs($user)->patch(route('purchase-orders.update', $order), [
+            'purchase_order_no' => $order->purchase_order_no,
+            'supplier_id' => $supplier->id,
+            'status' => 'sent',
+            'tax' => 50,
+            'discount' => 10,
+            'items' => [
+                [
+                    'material_id' => $material->id,
+                    'name' => '採購更新材料 B',
+                    'unit' => '支',
+                    'quantity' => 4,
+                    'unit_cost' => 600,
+                ],
+            ],
+        ])->assertRedirect(route('purchase-orders.show', $order));
+
+        $order->refresh();
+
+        $this->assertSame('sent', $order->status);
+        $this->assertSame(2400, $order->subtotal);
+        $this->assertSame(2440, $order->total);
+        $this->assertDatabaseHas('purchase_order_items', [
+            'purchase_order_id' => $order->id,
+            'name' => '採購更新材料 B',
+            'quantity' => '4.000',
+        ]);
+
+        $this->actingAs($user)
+            ->delete(route('purchase-orders.destroy', $order))
+            ->assertRedirect(route('purchase-orders.index'));
+
+        $this->assertDatabaseMissing('purchase_orders', [
+            'id' => $order->id,
+        ]);
+    }
+
     public function test_purchase_order_receive_creates_inventory_transaction_and_updates_stock(): void
     {
         $user = $this->authorizedUser(roleCode: 'purchasing');

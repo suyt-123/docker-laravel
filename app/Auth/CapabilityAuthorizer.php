@@ -3,6 +3,7 @@
 namespace App\Auth;
 
 use App\Models\User;
+use Illuminate\Support\Collection;
 
 class CapabilityAuthorizer
 {
@@ -17,7 +18,7 @@ class CapabilityAuthorizer
     }
 
     /**
-     * @return \Illuminate\Support\Collection<int, string>
+     * @return Collection<int, string>
      */
     public function capabilityCodes(User $user, ?int $tenantId = null)
     {

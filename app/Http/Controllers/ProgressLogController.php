@@ -11,9 +11,9 @@ use App\Models\ProgressLog;
 use App\Models\ProgressPhoto;
 use App\Models\Project;
 use App\Models\Worker;
+use App\Services\Field\ProgressPhotoService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -22,8 +22,8 @@ class ProgressLogController extends Controller
     public function __construct(
         private readonly CapabilityAuthorizer $authorizer,
         private readonly DataScope $dataScope,
-    ) {
-    }
+        private readonly ProgressPhotoService $photos,
+    ) {}
 
     public function index(Request $request): Response
     {
@@ -161,10 +161,7 @@ class ProgressLogController extends Controller
     {
         $this->ensureVisible(request(), $progressLog);
 
-        foreach ($progressLog->photos as $photo) {
-            Storage::disk('public')->delete($photo->file_path);
-        }
-
+        $this->photos->deleteForLog($progressLog);
         $progressLog->delete();
 
         return redirect()
@@ -176,8 +173,7 @@ class ProgressLogController extends Controller
     {
         $this->ensureVisible(request(), $progressPhoto->progressLog);
 
-        Storage::disk('public')->delete($progressPhoto->file_path);
-        $progressPhoto->delete();
+        $this->photos->delete($progressPhoto);
 
         return back()->with('success', '工地照片已刪除。');
     }
@@ -260,36 +256,7 @@ class ProgressLogController extends Controller
             return;
         }
 
-        $log->loadMissing('project', 'dispatch', 'creator');
-
-        foreach ($request->file('photos', []) as $file) {
-            $path = $file->store('progress-photos/'.now()->format('Y/m'), 'public');
-
-            $log->photos()->create([
-                'project_id' => $log->project_id,
-                'dispatch_id' => $log->dispatch_id,
-                'uploaded_by' => $request->user()?->id,
-                'file_path' => $path,
-                'original_name' => $file->getClientOriginalName(),
-                'mime_type' => $file->getMimeType(),
-                'size' => $file->getSize(),
-                'taken_at' => now(),
-                'latitude' => $log->latitude,
-                'longitude' => $log->longitude,
-                'watermark_text' => $this->watermarkText($log),
-            ]);
-        }
-    }
-
-    private function watermarkText(ProgressLog $log): string
-    {
-        return collect([
-            $log->project?->name,
-            $log->dispatch?->work_item,
-            $log->work_date?->format('Y-m-d'),
-            $log->creator?->name,
-            ($log->latitude && $log->longitude) ? "{$log->latitude}, {$log->longitude}" : null,
-        ])->filter()->implode(' / ');
+        $this->photos->storeForLog($log, $request->file('photos', []), $request->user());
     }
 
     /**
@@ -337,7 +304,7 @@ class ProgressLogController extends Controller
         return [
             'id' => $photo->id,
             'file_path' => $photo->file_path,
-            'url' => Storage::disk('public')->url($photo->file_path),
+            'url' => $this->photos->url($photo),
             'original_name' => $photo->original_name,
             'caption' => $photo->caption,
             'taken_at' => $photo->taken_at?->toDateTimeString(),

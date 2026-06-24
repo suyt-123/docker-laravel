@@ -19,8 +19,7 @@ class QuotationTemplateController extends Controller
     public function __construct(
         private readonly CapabilityAuthorizer $authorizer,
         private readonly QuotationTemplateCalculator $calculator,
-    ) {
-    }
+    ) {}
 
     public function index(Request $request): Response
     {

@@ -2,6 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Actions\Inventory\CreateInventoryTransaction;
+use App\Actions\Inventory\DeleteInventoryTransaction;
+use App\Actions\Inventory\UpdateInventoryTransaction;
 use App\Auth\DataScope;
 use App\Http\Requests\StoreInventoryTransactionRequest;
 use App\Http\Requests\UpdateInventoryTransactionRequest;
@@ -10,15 +13,17 @@ use App\Models\Material;
 use App\Models\Project;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class InventoryTransactionController extends Controller
 {
-    public function __construct(private readonly DataScope $dataScope)
-    {
-    }
+    public function __construct(
+        private readonly DataScope $dataScope,
+        private readonly CreateInventoryTransaction $createInventoryTransaction,
+        private readonly UpdateInventoryTransaction $updateInventoryTransaction,
+        private readonly DeleteInventoryTransaction $deleteInventoryTransaction,
+    ) {}
 
     public function index(Request $request): Response
     {
@@ -77,15 +82,7 @@ class InventoryTransactionController extends Controller
 
     public function store(StoreInventoryTransactionRequest $request): RedirectResponse
     {
-        $transaction = DB::transaction(function () use ($request) {
-            $data = $this->transactionData($request->validated());
-            $data['created_by'] = $request->user()?->id;
-
-            $transaction = InventoryTransaction::create($data);
-            $this->applyStockDelta($transaction);
-
-            return $transaction;
-        });
+        $transaction = $this->createInventoryTransaction->execute($request->validated(), $request->user());
 
         return redirect()
             ->route('inventory-transactions.show', $transaction)
@@ -143,11 +140,7 @@ class InventoryTransactionController extends Controller
     {
         $this->ensureVisible($request, $inventoryTransaction);
 
-        DB::transaction(function () use ($request, $inventoryTransaction) {
-            $this->revertStockDelta($inventoryTransaction);
-            $inventoryTransaction->update($this->transactionData($request->validated()));
-            $this->applyStockDelta($inventoryTransaction->refresh());
-        });
+        $this->updateInventoryTransaction->execute($inventoryTransaction, $request->validated());
 
         return redirect()
             ->route('inventory-transactions.show', $inventoryTransaction)
@@ -158,10 +151,7 @@ class InventoryTransactionController extends Controller
     {
         $this->ensureVisible($request, $inventoryTransaction);
 
-        DB::transaction(function () use ($inventoryTransaction) {
-            $this->revertStockDelta($inventoryTransaction);
-            $inventoryTransaction->delete();
-        });
+        $this->deleteInventoryTransaction->execute($inventoryTransaction);
 
         return redirect()
             ->route('inventory-transactions.index')
@@ -199,39 +189,6 @@ class InventoryTransactionController extends Controller
         ];
     }
 
-    /**
-     * @param  array<string, mixed>  $data
-     * @return array<string, mixed>
-     */
-    private function transactionData(array $data): array
-    {
-        $quantity = (float) $data['quantity'];
-        $unitCost = (int) ($data['unit_cost'] ?? 0);
-
-        return [
-            ...$data,
-            'unit_cost' => $unitCost,
-            'total_cost' => (int) round($quantity * $unitCost),
-            'occurred_at' => $data['occurred_at'] ?? now(),
-        ];
-    }
-
-    private function applyStockDelta(InventoryTransaction $transaction): void
-    {
-        $transaction->material()->lockForUpdate()->firstOrFail()->increment(
-            'current_stock',
-            $this->stockDelta($transaction),
-        );
-    }
-
-    private function revertStockDelta(InventoryTransaction $transaction): void
-    {
-        $transaction->material()->lockForUpdate()->firstOrFail()->decrement(
-            'current_stock',
-            $this->stockDelta($transaction),
-        );
-    }
-
     private function ensureVisible(Request $request, InventoryTransaction $inventoryTransaction): void
     {
         if (! $inventoryTransaction->project_id) {
@@ -244,17 +201,5 @@ class InventoryTransactionController extends Controller
             ->exists();
 
         abort_unless($visible, 403);
-    }
-
-    private function stockDelta(InventoryTransaction $transaction): float
-    {
-        $quantity = (float) $transaction->quantity;
-
-        return match ($transaction->type) {
-            'inbound', 'purchase_in', 'return' => $quantity,
-            'outbound', 'transfer', 'waste' => -$quantity,
-            'adjustment' => $quantity,
-            default => 0,
-        };
     }
 }

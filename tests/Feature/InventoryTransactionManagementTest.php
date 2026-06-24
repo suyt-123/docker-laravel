@@ -6,7 +6,6 @@ use App\Models\Customer;
 use App\Models\InventoryTransaction;
 use App\Models\Material;
 use App\Models\Project;
-use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 

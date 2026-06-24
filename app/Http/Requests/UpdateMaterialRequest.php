@@ -2,6 +2,4 @@
 
 namespace App\Http\Requests;
 
-class UpdateMaterialRequest extends StoreMaterialRequest
-{
-}
+class UpdateMaterialRequest extends StoreMaterialRequest {}
