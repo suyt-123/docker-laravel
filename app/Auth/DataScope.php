@@ -7,12 +7,11 @@ use Illuminate\Database\Eloquent\Builder;
 
 class DataScope
 {
-    public function __construct(private readonly CapabilityAuthorizer $authorizer)
-    {
-    }
+    public function __construct(private readonly CapabilityAuthorizer $authorizer) {}
 
     /**
      * @template TModel of \Illuminate\Database\Eloquent\Model
+     *
      * @param  Builder<TModel>  $query
      * @return Builder<TModel>
      */
@@ -41,6 +40,7 @@ class DataScope
 
     /**
      * @template TModel of \Illuminate\Database\Eloquent\Model
+     *
      * @param  Builder<TModel>  $query
      * @return Builder<TModel>
      */
@@ -71,6 +71,7 @@ class DataScope
 
     /**
      * @template TModel of \Illuminate\Database\Eloquent\Model
+     *
      * @param  Builder<TModel>  $query
      * @return Builder<TModel>
      */
@@ -95,6 +96,7 @@ class DataScope
 
     /**
      * @template TModel of \Illuminate\Database\Eloquent\Model
+     *
      * @param  Builder<TModel>  $query
      * @return Builder<TModel>
      */
@@ -129,6 +131,7 @@ class DataScope
 
     /**
      * @template TModel of \Illuminate\Database\Eloquent\Model
+     *
      * @param  Builder<TModel>  $query
      * @return Builder<TModel>
      */

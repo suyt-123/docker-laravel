@@ -82,7 +82,7 @@ Remaining full-suite failure:
 
 ### Remaining known security risks
 
-- `WorkerController` still has assigned/own scope mismatch from `object-authorization-audit.md`; direct worker route-model binding should be reviewed next.
+- `WorkerController` assigned/own direct route-model binding has been reviewed and now uses `DataScope::workers()` in `show`, `edit`, `update`, and `destroy`.
 - `CustomerController` may expose related projects/quotations without project-level scoping if customer access is not intended to be tenant-wide.
 - Tenant-wide master data controllers still rely mainly on route capability. This is acceptable only if tenant-wide access is the intended authorization boundary.
 - `InventoryTransactionController@index` and form option project lists are still tenant-wide. The sprint scope was only direct route-model binding actions; list/form scoping should be reviewed separately if assigned users can reach those pages.
@@ -100,6 +100,7 @@ Production should wait until:
 - Staging smoke tests confirm:
   - assigned users cannot access unassigned dispatches by ID;
   - assigned users cannot access project-linked inventory transactions by ID;
+  - assigned users cannot access workers outside their visible worker scope by ID;
   - admin users can still manage dispatches and inventory transactions normally;
   - inventory stock recalculation still works after authorized update/delete.
 
@@ -108,6 +109,6 @@ Production should wait until:
 - **Staging:** Allowed and recommended.
 - **Production:** Conditional no-go until the full-suite `ExampleTest` failure is fixed or explicitly waived.
 - **Security release confidence for this sprint:** High for the verified Dispatch and Inventory Transaction IDOR scope.
-- **Next security sprint:** Review `WorkerController`, customer-related project/quotation exposure, and list/form option scoping for assigned users.
+- **Next security sprint:** Review customer-related project/quotation exposure and list/form option scoping for assigned users.
 
 No Production deployment was performed.

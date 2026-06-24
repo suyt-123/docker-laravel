@@ -178,7 +178,7 @@ Scope: first-round P0/P1 fixes from `object-authorization-audit.md`.
    - 若有 `project_id`，需確認 linked project 對目前使用者可見。
 
 3. 後續 P1/P2
-   - `WorkerController` assigned/own scope mismatch。
+   - `WorkerController` assigned/own scope mismatch 已後續修補：direct model-bound actions 使用 `DataScope::workers()`。
    - `CustomerController` show related projects/quotations 是否需要 project scope。
    - 其他 tenant-wide master-data controller 是否符合產品授權模型。
 

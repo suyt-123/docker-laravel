@@ -2,9 +2,12 @@
 
 namespace Tests\Feature;
 
+use App\Models\Capability;
+use App\Models\Role;
 use App\Models\User;
-use App\Models\Worker;
 use App\Models\WorkCrew;
+use App\Models\Worker;
+use Database\Seeders\RbacSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -102,5 +105,66 @@ class WorkerManagementTest extends TestCase
             ])
             ->assertRedirect(route('workers.create'))
             ->assertSessionHasErrors('user_id');
+    }
+
+    public function test_assigned_worker_user_cannot_access_worker_outside_scope(): void
+    {
+        $this->seed(RbacSeeder::class);
+
+        $crew = WorkCrew::create(['name' => '可見工班']);
+        $otherCrew = WorkCrew::create(['name' => '不可見工班']);
+        $user = User::factory()->create();
+        $role = Role::create([
+            'name' => 'Worker scoped manager',
+            'code' => 'worker_scoped_manager_'.str()->random(8),
+        ]);
+        $role->capabilities()->sync(Capability::query()
+            ->whereIn('code', [
+                'field.workers.view.assigned',
+                'field.workers.update.tenant',
+                'field.workers.delete.tenant',
+            ])
+            ->pluck('id'));
+        $user->roles()->attach($role);
+        Worker::create([
+            'user_id' => $user->id,
+            'work_crew_id' => $crew->id,
+            'name' => '登入師傅',
+        ]);
+        $visibleWorker = Worker::create([
+            'work_crew_id' => $crew->id,
+            'name' => '同工班師傅',
+        ]);
+        $hiddenWorker = Worker::create([
+            'work_crew_id' => $otherCrew->id,
+            'name' => '其他工班師傅',
+        ]);
+
+        $this->actingAs($user)
+            ->get(route('workers.show', $visibleWorker))
+            ->assertOk();
+
+        $this->actingAs($user)
+            ->get(route('workers.show', $hiddenWorker))
+            ->assertForbidden();
+
+        $this->actingAs($user)
+            ->get(route('workers.edit', $hiddenWorker))
+            ->assertForbidden();
+
+        $this->actingAs($user)
+            ->patch(route('workers.update', $hiddenWorker), [
+                'name' => '不應更新',
+            ])
+            ->assertForbidden();
+
+        $this->actingAs($user)
+            ->delete(route('workers.destroy', $hiddenWorker))
+            ->assertForbidden();
+
+        $this->assertDatabaseHas('workers', [
+            'id' => $hiddenWorker->id,
+            'name' => '其他工班師傅',
+        ]);
     }
 }

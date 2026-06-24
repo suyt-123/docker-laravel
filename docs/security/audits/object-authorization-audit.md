@@ -64,10 +64,10 @@ Legend:
 | `QuotationController` | `destroyAttachment` | `DocumentAttachment` | `DELETE /quotation-attachments/{document_attachment}` | `sales.quotations.update.tenant` | Partial: validates attachment type is `Quotation`; no parent quotation/project visibility check | High | Resolve parent quotation and require same shared quotation visibility check before delete. |
 | `AttendanceRecordController` | `show` | `AttendanceRecord` | `GET /attendance-records/{attendance_record}` | `field.attendance.view.tenant`, `field.attendance.view.assigned`, or `field.attendance.view.own` | Yes: `ensureVisible()` checks `DataScope::attendanceRecords` | Low | Keep IDOR regression test. |
 | `AttendanceRecordController` | `destroy` | `AttendanceRecord` | `DELETE /attendance-records/{attendance_record}` | `field.attendance.delete.tenant` | Yes: `ensureVisible()` | Low | Keep delete object-scope test. |
-| `WorkerController` | `show` | `Worker` | `GET /workers/{worker}` | `field.workers.view.tenant`, `field.workers.view.assigned`, or `field.workers.view.own` | No: index uses `DataScope::workers`, model-bound action does not | High | Add shared `ensureVisible()` using worker DataScope for assigned/own permissions. |
-| `WorkerController` | `edit` | `Worker` | `GET /workers/{worker}/edit` | `field.workers.update.tenant` | No object visibility check | Medium | If update is tenant-admin only, document tenant-wide design; otherwise add object check. |
-| `WorkerController` | `update` | `Worker` | `PUT/PATCH /workers/{worker}` | `field.workers.update.tenant` | No object visibility check | Medium | Add object check if non-admin update should be scoped. |
-| `WorkerController` | `destroy` | `Worker` | `DELETE /workers/{worker}` | `field.workers.delete.tenant` | No object visibility check | Medium | Add object check if non-admin delete should be scoped. |
+| `WorkerController` | `show` | `Worker` | `GET /workers/{worker}` | `field.workers.view.tenant`, `field.workers.view.assigned`, or `field.workers.view.own` | Yes: `ensureVisible()` checks `DataScope::workers` | Low / Fixed | Keep assigned-scope IDOR regression test. |
+| `WorkerController` | `edit` | `Worker` | `GET /workers/{worker}/edit` | `field.workers.update.tenant` | Yes: `ensureVisible()` checks `DataScope::workers` | Low / Fixed | Keep assigned-scope IDOR regression test. |
+| `WorkerController` | `update` | `Worker` | `PUT/PATCH /workers/{worker}` | `field.workers.update.tenant` | Yes: `ensureVisible()` checks `DataScope::workers` | Low / Fixed | Keep assigned-scope IDOR regression test. |
+| `WorkerController` | `destroy` | `Worker` | `DELETE /workers/{worker}` | `field.workers.delete.tenant` | Yes: `ensureVisible()` checks `DataScope::workers` | Low / Fixed | Keep assigned-scope IDOR regression test. |
 | `CustomerController` | `show` | `Customer` | `GET /customers/{customer}` | `crm.customers.view.tenant` | Partial: contact fields gated by capability; no customer/project object scope | Medium | If customer records can be project-scoped, add customer visibility and scope related projects/quotations. |
 | `CustomerController` | `edit` | `Customer` | `GET /customers/{customer}/edit` | `crm.customers.update.tenant` | No object visibility check | Medium | Add customer object policy if users should not update all tenant customers. |
 | `CustomerController` | `update` | `Customer` | `PUT/PATCH /customers/{customer}` | `crm.customers.update.tenant` | No object visibility check | Medium | Add object check before mutation if customer ownership exists. |
@@ -93,10 +93,11 @@ Legend:
 3. `FinancialRecordController`: project-linked records can leak financial data if route ID is guessed.
 4. `InventoryTransactionController`: project-linked inventory movement can leak operational data if route ID is guessed.
 5. `QuotationController`: project-linked quotations and quotation attachments need shared object visibility checks across PDF, workflows, upload, and delete.
-6. `WorkerController`: route supports assigned/own visibility, but direct worker model binding lacks equivalent enforcement.
+6. `CustomerController`: customer-related project/quotation exposure should be reviewed if customer access is not intended to be tenant-wide.
 
 ## Notes
 
 - This audit did not modify production logic.
 - The prior Project IDOR fix appears present in `ProjectController` and should remain the reference pattern for project-linked object checks.
+- `WorkerController` direct model-bound actions now use the same `DataScope::workers()` visibility rule as the index view.
 - For tenant-wide master data, the risk level assumes tenant capability is an intentional trust boundary. If the product requires branch/site/project-level segmentation, those rows should be reclassified upward and covered by object policies or `DataScope` checks.

@@ -6,8 +6,8 @@ use App\Auth\DataScope;
 use App\Http\Requests\StoreWorkerRequest;
 use App\Http\Requests\UpdateWorkerRequest;
 use App\Models\User;
-use App\Models\Worker;
 use App\Models\WorkCrew;
+use App\Models\Worker;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -15,9 +15,7 @@ use Inertia\Response;
 
 class WorkerController extends Controller
 {
-    public function __construct(private readonly DataScope $dataScope)
-    {
-    }
+    public function __construct(private readonly DataScope $dataScope) {}
 
     public function index(Request $request): Response
     {
@@ -81,12 +79,17 @@ class WorkerController extends Controller
             ->with('success', '師傅已建立。');
     }
 
-    public function show(Worker $worker): Response
+    public function show(Request $request, Worker $worker): Response
     {
+        $this->ensureVisible($request, $worker);
+
         $worker->load([
             'workCrew:id,name,leader_name,phone',
             'user:id,name,email',
-            'dispatches' => fn ($query) => $query->with('project:id,project_no,name')->latest()->limit(12),
+            'dispatches' => fn ($query) => $query
+                ->with('project:id,project_no,name')
+                ->orderByDesc('dispatches.created_at')
+                ->limit(12),
         ]);
 
         return Inertia::render('Workers/Show', [
@@ -107,8 +110,10 @@ class WorkerController extends Controller
         ]);
     }
 
-    public function edit(Worker $worker): Response
+    public function edit(Request $request, Worker $worker): Response
     {
+        $this->ensureVisible($request, $worker);
+
         return Inertia::render('Workers/Edit', [
             'worker' => [
                 'id' => $worker->id,
@@ -130,6 +135,8 @@ class WorkerController extends Controller
 
     public function update(UpdateWorkerRequest $request, Worker $worker): RedirectResponse
     {
+        $this->ensureVisible($request, $worker);
+
         $worker->update($this->workerData($request->validated()));
 
         return redirect()
@@ -137,8 +144,10 @@ class WorkerController extends Controller
             ->with('success', '師傅已更新。');
     }
 
-    public function destroy(Worker $worker): RedirectResponse
+    public function destroy(Request $request, Worker $worker): RedirectResponse
     {
+        $this->ensureVisible($request, $worker);
+
         $worker->delete();
 
         return redirect()
@@ -170,6 +179,16 @@ class WorkerController extends Controller
                     'code' => $role->code,
                 ]),
             ]);
+    }
+
+    private function ensureVisible(Request $request, Worker $worker): void
+    {
+        $visible = $this->dataScope
+            ->workers(Worker::query(), $request->user())
+            ->whereKey($worker->id)
+            ->exists();
+
+        abort_unless($visible, 403);
     }
 
     /**
