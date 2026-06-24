@@ -9,6 +9,7 @@ use App\Models\User;
 use Database\Seeders\RbacSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
+use Laravel\Sanctum\PersonalAccessToken;
 use Tests\TestCase;
 
 class UserManagementTest extends TestCase
@@ -109,6 +110,91 @@ class UserManagementTest extends TestCase
         $this->assertTrue(app(CapabilityAuthorizer::class)->allows($user, 'field.dispatches.view.tenant'));
     }
 
+    public function test_authenticated_user_can_view_user_api_tokens(): void
+    {
+        $admin = $this->adminUser();
+        $target = User::factory()->create([
+            'name' => 'Token Owner',
+            'email' => 'token-owner@example.com',
+        ]);
+        $token = $target->createToken('外部看板', ['read:quotations'])->accessToken;
+        $token->forceFill(['last_used_at' => now()->subHour()])->save();
+
+        $this
+            ->actingAs($admin)
+            ->get(route('users.show', $target))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('Users/Show')
+                ->where('user.api_tokens.0.name', '外部看板')
+                ->where('user.api_tokens.0.abilities.0', 'read:quotations')
+                ->where('user.api_tokens.0.status', 'active')
+                ->where('user.api_tokens.0.last_used_at', $token->last_used_at->timezone(config('app.timezone'))->format('Y-m-d H:i'))
+            );
+    }
+
+    public function test_user_manager_can_revoke_user_api_token(): void
+    {
+        $admin = $this->adminUser();
+        $target = User::factory()->create();
+        $token = $target->createToken('要撤銷的 token', ['read:quotations'])->accessToken;
+
+        $this
+            ->actingAs($admin)
+            ->delete(route('users.api-tokens.destroy', [$target, $token]))
+            ->assertRedirect(route('users.show', $target));
+
+        $this->assertDatabaseMissing('personal_access_tokens', [
+            'id' => $token->id,
+        ]);
+        $this->assertDatabaseHas('activity_logs', [
+            'actor_id' => $admin->id,
+            'action' => 'revoke',
+            'event' => 'api_token.revoked',
+            'subject_type' => PersonalAccessToken::class,
+            'subject_id' => $token->id,
+            'module' => 'security.api_tokens',
+        ]);
+    }
+
+    public function test_user_manager_cannot_revoke_token_through_wrong_user_route(): void
+    {
+        $admin = $this->adminUser();
+        $routeUser = User::factory()->create();
+        $owner = User::factory()->create();
+        $token = $owner->createToken('其他人的 token', ['read:quotations'])->accessToken;
+
+        $this
+            ->actingAs($admin)
+            ->delete(route('users.api-tokens.destroy', [$routeUser, $token]))
+            ->assertNotFound();
+
+        $this->assertDatabaseHas('personal_access_tokens', [
+            'id' => $token->id,
+        ]);
+    }
+
+    public function test_user_manager_without_update_capability_cannot_revoke_user_api_token(): void
+    {
+        $this->seed(RbacSeeder::class);
+
+        $manager = User::factory()->create();
+        $target = User::factory()->create();
+        $token = $target->createToken('不可代撤銷', ['read:quotations'])->accessToken;
+        $manager->roles()->attach($this->customRoleWithCapabilities([
+            'security.users.view.tenant',
+        ]));
+
+        $this
+            ->actingAs($manager)
+            ->delete(route('users.api-tokens.destroy', [$target, $token]))
+            ->assertForbidden();
+
+        $this->assertDatabaseHas('personal_access_tokens', [
+            'id' => $token->id,
+        ]);
+    }
+
     public function test_authenticated_user_can_delete_another_user_but_not_self(): void
     {
         $admin = $this->adminUser();
@@ -153,7 +239,7 @@ class UserManagementTest extends TestCase
             'code' => 'user_manager',
         ]);
         $userManagerRole->capabilities()->sync(
-            \App\Models\Capability::query()
+            Capability::query()
                 ->whereIn('code', [
                     'security.users.view.tenant',
                     'security.users.update.tenant',

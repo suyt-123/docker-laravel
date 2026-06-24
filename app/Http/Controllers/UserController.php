@@ -7,6 +7,7 @@ use App\Http\Requests\StoreUserRequest;
 use App\Http\Requests\UpdateUserRequest;
 use App\Models\Role;
 use App\Models\User;
+use App\Presenters\Security\ApiTokenPresenter;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -15,9 +16,10 @@ use Inertia\Response;
 
 class UserController extends Controller
 {
-    public function __construct(private readonly CapabilityAuthorizer $authorizer)
-    {
-    }
+    public function __construct(
+        private readonly CapabilityAuthorizer $authorizer,
+        private readonly ApiTokenPresenter $apiTokenPresenter,
+    ) {}
 
     public function index(Request $request): Response
     {
@@ -72,7 +74,7 @@ class UserController extends Controller
 
     public function show(User $user): Response
     {
-        $user->load(['roles.capabilities']);
+        $user->load(['roles.capabilities', 'tokens']);
 
         return Inertia::render('Users/Show', [
             'user' => [
@@ -88,6 +90,10 @@ class UserController extends Controller
                         'code' => $capability->code,
                         'group' => $capability->group,
                     ]),
+                'api_tokens' => $user->tokens
+                    ->sortByDesc('created_at')
+                    ->values()
+                    ->map(fn ($token) => $this->apiTokenPresenter->token($token)),
             ],
         ]);
     }

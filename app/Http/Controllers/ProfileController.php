@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\ProfileUpdateRequest;
+use App\Presenters\Security\ApiTokenPresenter;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -13,6 +14,8 @@ use Inertia\Response;
 
 class ProfileController extends Controller
 {
+    public function __construct(private readonly ApiTokenPresenter $apiTokenPresenter) {}
+
     /**
      * Display the user's profile form.
      */
@@ -21,6 +24,13 @@ class ProfileController extends Controller
         return Inertia::render('Profile/Edit', [
             'mustVerifyEmail' => $request->user() instanceof MustVerifyEmail,
             'status' => session('status'),
+            'apiTokenAbilities' => ApiTokenController::ABILITIES,
+            'apiTokens' => $request->user()
+                ->tokens()
+                ->latest()
+                ->get()
+                ->map(fn ($token) => $this->apiTokenPresenter->token($token)),
+            'newApiToken' => session('api_token'),
         ]);
     }
 

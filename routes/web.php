@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\ActivityLogController;
+use App\Http\Controllers\ApiTokenController;
 use App\Http\Controllers\AttendanceRecordController;
 use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\DashboardController;
@@ -13,8 +14,8 @@ use App\Http\Controllers\InventoryTransactionController;
 use App\Http\Controllers\MaterialController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ProgressLogController;
-use App\Http\Controllers\ProjectController;
 use App\Http\Controllers\ProjectChangeOrderController;
+use App\Http\Controllers\ProjectController;
 use App\Http\Controllers\PurchaseOrderController;
 use App\Http\Controllers\QuotationController;
 use App\Http\Controllers\QuotationTemplateController;
@@ -22,8 +23,8 @@ use App\Http\Controllers\RoleController;
 use App\Http\Controllers\SupplierController;
 use App\Http\Controllers\SystemSettingController;
 use App\Http\Controllers\UserController;
-use App\Http\Controllers\WorkerController;
 use App\Http\Controllers\WorkCrewController;
+use App\Http\Controllers\WorkerController;
 use App\Http\Controllers\WorkHoursReportController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
@@ -227,6 +228,9 @@ Route::middleware('auth')->group(function () use ($crudCapabilities) {
     Route::delete('users/{user}', [UserController::class, 'destroy'])
         ->middleware('capability:security.users.delete.tenant')
         ->name('users.destroy');
+    Route::delete('users/{user}/api-tokens/{token}', [ApiTokenController::class, 'destroyForUser'])
+        ->middleware('capability:security.users.update.tenant')
+        ->name('users.api-tokens.destroy');
 
     Route::get('roles', [RoleController::class, 'index'])
         ->middleware('capability:security.roles.view.tenant')
@@ -256,6 +260,8 @@ Route::middleware('auth')->group(function () use ($crudCapabilities) {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+    Route::post('/profile/api-tokens', [ApiTokenController::class, 'store'])->name('profile.api-tokens.store');
+    Route::delete('/profile/api-tokens/{token}', [ApiTokenController::class, 'destroy'])->name('profile.api-tokens.destroy');
 });
 
 require __DIR__.'/auth.php';

@@ -17,6 +17,16 @@ export default function Show({ user }) {
         }
     };
 
+    const revokeToken = (token) => {
+        if (!window.confirm(`確定要撤銷「${token.name}」嗎？`)) {
+            return;
+        }
+
+        router.delete(route('users.api-tokens.destroy', [user.id, token.id]), {
+            preserveScroll: true,
+        });
+    };
+
     const groupedCapabilities = groupCapabilities(user.capabilities ?? []);
 
     return (
@@ -129,6 +139,59 @@ export default function Show({ user }) {
                         </div>
                     </section>
 
+                    <section className="bg-white p-6 shadow-sm sm:rounded-lg">
+                        <h3 className="text-base font-semibold text-gray-950">
+                            API Tokens
+                        </h3>
+                        <div className="mt-5 space-y-3">
+                            {(user.api_tokens ?? []).length === 0 && (
+                                <p className="text-sm text-gray-500">
+                                    尚未建立 API token。
+                                </p>
+                            )}
+
+                            {(user.api_tokens ?? []).map((token) => (
+                                <div
+                                    key={token.id}
+                                    className="flex flex-col gap-3 rounded-md border border-gray-200 px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
+                                >
+                                    <div>
+                                        <div className="flex flex-wrap items-center gap-2">
+                                            <div className="text-sm font-medium text-gray-900">
+                                                {token.name}
+                                            </div>
+                                            <TokenStatus token={token} />
+                                        </div>
+                                        <div className="mt-1 text-xs text-gray-500">
+                                            建立 {token.created_at || '未填'} ·
+                                            最後使用{' '}
+                                            {token.last_used_label || '尚未使用'} ·
+                                            到期 {token.expires_label || '未設定'}
+                                        </div>
+                                        <div className="mt-2 flex flex-wrap gap-2">
+                                            {token.abilities.map((ability) => (
+                                                <span
+                                                    key={ability}
+                                                    className="rounded bg-gray-100 px-2 py-1 font-mono text-xs text-gray-700"
+                                                >
+                                                    {ability}
+                                                </span>
+                                            ))}
+                                        </div>
+                                    </div>
+                                    {canUpdate && (
+                                        <DangerButton
+                                            type="button"
+                                            onClick={() => revokeToken(token)}
+                                        >
+                                            撤銷
+                                        </DangerButton>
+                                    )}
+                                </div>
+                            ))}
+                        </div>
+                    </section>
+
                     {canDelete && (
                         <div className="flex justify-end">
                             <DangerButton onClick={destroyUser}>
@@ -148,6 +211,22 @@ function Info({ label, value }) {
             <dt className="text-sm font-medium text-gray-500">{label}</dt>
             <dd className="mt-1 text-sm text-gray-950">{value || '未填'}</dd>
         </div>
+    );
+}
+
+function TokenStatus({ token }) {
+    const isExpired = token.status === 'expired';
+
+    return (
+        <span
+            className={`rounded-full px-2 py-0.5 text-xs font-medium ${
+                isExpired
+                    ? 'bg-rose-50 text-rose-700'
+                    : 'bg-emerald-50 text-emerald-700'
+            }`}
+        >
+            {isExpired ? '已到期' : '有效'}
+        </span>
     );
 }
 
