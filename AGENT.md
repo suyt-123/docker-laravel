@@ -69,6 +69,8 @@ npm run build
 ## 開發規則
 
 - 遵循既有 Laravel/Inertia 寫法；不要為單一改動引入新的架構或大型抽象。
+- 架構主線是 Inertia-first, API-ready：後台 ERP 預設走 Laravel web routes + Inertia + React，不要重構成純 API + React SPA 作為主線；只有在有明確外部整合、App、公開頁或自動化消費者時才新增 API endpoint。
+- API-ready 的準備方式是把可重用業務流程放進 services/actions/presenters，讓 Inertia 與未來 API 共用同一套授權、資料範圍、工作流與稽核邏輯。
 - 新增或修改資源流程時，通常需要同步檢查 controller、FormRequest、model relationship、route、Inertia page、feature test。
 - Route 必須放在適當的 `auth` group 內，並使用 capability middleware 保護。
 - 前端只負責隱藏/顯示操作入口；真正的權限與資料範圍必須在後端執行。
@@ -116,6 +118,12 @@ docker compose exec app php artisan test
 需要理解背景時優先看：
 
 - `README.md`：開發環境、服務、常用指令。
+- `docs/architecture/inertia-first-api-ready.md`：Inertia-first, API-ready 架構主線。
+- `docs/architecture/feature-checklist.md`：新增功能、模組、API endpoint 前的檢查表。
+- `docs/api/contract.md`：未來 `/api/v1` 的 API response/error/auth/pagination 合約。
+- `docs/api/openapi.yaml`：已公開或準備公開的 `/api/v1` endpoint 規格。
+- `docs/api/operations.md`：API rate limit、CORS、idempotency、logging、token governance 檢查。
+- `docs/deployment/staging-api-checklist.md`：API、R2、PDF、queue/cache、Cloudflare staging 驗證清單。
 - `docs/project/project.md` 與 `docs/project/siteFunc.md`：產品/功能背景。
 - `docs/security/README.md`：安全文件入口。
 - `docs/security/audits/object-authorization-audit.md`：物件授權稽核。
